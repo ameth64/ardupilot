@@ -96,5 +96,5 @@ void loop()
     hal.scheduler->delay(10);
 }
 
-// Register above functions in HAL board level
+// Register above functions in HAL board level. 默认注册setup, loop两个callback函数
 AP_HAL_MAIN();

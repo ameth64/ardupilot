@@ -10,13 +10,13 @@
 const AP_HAL::HAL& hal = AP_HAL::get_HAL();
 
 void setup() {
-	hal.console->println("hello world");
+	hal.console->println("hello world from setup method of PX4 firmware-based board!");
 }
 
 void loop()
 {
 	hal.scheduler->delay(1000);
-	hal.console->println("*");
+	hal.console->println("*---delay for 1000ms...");
 }
 
 AP_HAL_MAIN();
