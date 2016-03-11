@@ -51,7 +51,7 @@ static void test_printf(void)
     uint8_t failures = 0;
     hal.console->printf("Running printf tests\n");
     for (i=0; i < ARRAY_SIZE(float_tests); i++) {
-        int ret = hal.util->snprintf(buf, sizeof(buf), float_tests[i].fmt, float_tests[i].v);
+        unsigned int ret = hal.util->snprintf(buf, sizeof(buf), float_tests[i].fmt, float_tests[i].v);
         if (strcmp(buf, float_tests[i].result) != 0) {
             hal.console->printf("Failed float_tests[%u] '%s' -> '%s' should be '%s'\n", 
                                 (unsigned)i, 

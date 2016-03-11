@@ -22,4 +22,5 @@ LIBRARIES += AP_Vehicle
 LIBRARIES += DataFlash
 LIBRARIES += Filter
 LIBRARIES += GCS_MAVLink
+LIBRARIES += AP_SerialManager
 LIBRARIES += StorageManager

@@ -103,10 +103,13 @@ void Plane::setup()
 
     // initialise the main loop scheduler
     scheduler.init(&scheduler_tasks[0], ARRAY_SIZE(scheduler_tasks));
+	
+	hal.console->printf("Hello from custom build of nnhuishi.com! \n");
 }
 
 void Plane::loop()
 {
+	hal.console->printf("\n --- loop in custom build of nnhuishi.com! \n");
     // wait for an INS sample
     ins.wait_for_sample();
 
