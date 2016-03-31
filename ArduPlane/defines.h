@@ -3,7 +3,7 @@
 #ifndef _DEFINES_H
 #define _DEFINES_H
 
-// Internal defines, don't edit and expect things to work
+///< Internal defines, don't edit and expect things to work
 // -------------------------------------------------------
 
 #define TRUE 1
@@ -16,7 +16,7 @@
 #define SERVO_MAX 4500  // This value represents 45 degrees and is just an
                         // arbitrary representation of servo max travel.
 
-// failsafe
+///< failsafe
 // ----------------------
 enum failsafe_state {
     FAILSAFE_NONE=0,

@@ -191,7 +191,7 @@ void AP_L1_Control::update_waypoint(const struct Location &prev_WP, const struct
 	// Calculate the NE position of the aircraft relative to WP A
     Vector2f A_air = location_diff(prev_WP, _current_loc);
 
-	// calculate distance to target track, for reporting
+	// calculate distance to target track, for reporting, % symbol means cross product 
 	_crosstrack_error = A_air % AB;
 
 	//Determine if the aircraft is behind a +-135 degree degree arc centred on WP A

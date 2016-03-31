@@ -31,6 +31,9 @@
 // inverse of LOCATION_SCALING_FACTOR
 #define LOCATION_SCALING_FACTOR_INV 89.83204953368922f
 
+/*
+calculate the scale of latitude radius from equator to specific location
+*/
 float longitude_scale(const struct Location &loc)
 {
 #if HAL_CPU_CLASS < HAL_CPU_CLASS_150
@@ -69,12 +72,12 @@ uint32_t get_distance_cm(const struct Location &loc1, const struct Location &loc
     return get_distance(loc1, loc2) * 100;
 }
 
-// return bearing in centi-degrees between two locations
+// return bearing in centi-degrees between two locations, from loc1 to loc2, measured in north-east coordinate(-Cartesian_degree + 90)
 int32_t get_bearing_cd(const struct Location &loc1, const struct Location &loc2)
 {
     int32_t off_x = loc2.lng - loc1.lng;
     int32_t off_y = (loc2.lat - loc1.lat) / longitude_scale(loc2);
-    int32_t bearing = 9000 + atan2f(-off_y, off_x) * 5729.57795f;
+    int32_t bearing = 9000 + atan2f(-off_y, off_x) * 5729.57795f; //5729.57795f is defined as the converter from radians to centi-degrees.
     if (bearing < 0) bearing += 36000;
     return bearing;
 }

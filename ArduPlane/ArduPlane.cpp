@@ -109,7 +109,6 @@ void Plane::setup()
 
 void Plane::loop()
 {
-	hal.console->printf("\n --- loop in custom build of nnhuishi.com! \n");
     // wait for an INS sample
     ins.wait_for_sample();
 
@@ -141,6 +140,8 @@ void Plane::loop()
     if (remaining > 19500) {
         remaining = 19500;
     }
+	
+	hal.console->printf("Loop in custom build of nnhuishi.com \n");
     scheduler.run(remaining);
 }
 

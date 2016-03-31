@@ -5,10 +5,10 @@
 
 namespace AP_HAL {
 
-    /* Toplevel pure virtual class Hal.*/
+    /** Toplevel pure virtual class Hal.*/
     class HAL;
 
-    /* Toplevel class names for drivers: */
+    /** Toplevel class names for drivers: */
     class UARTDriver;
     class I2CDevice;
     class I2CDeviceManager;
@@ -37,13 +37,13 @@ namespace AP_HAL {
     class Stream;
     class BetterStream;
 
-    /* Typdefs for function pointers (Procedure, Member Procedure) 
+    /** \brief Typdefs for function pointers (Procedure, Member Procedure) 
 
        For member functions we use the FastDelegate delegates class
        which allows us to encapculate a member function as a type
      */
     typedef void(*Proc)(void);
-    FUNCTOR_TYPEDEF(MemberProc, void);
+    FUNCTOR_TYPEDEF(MemberProc, void);	///< 将返回类型为 void 的函数指针 Functor 定义为 MemberProc
 
     /**
      * Global names for all of the existing SPI devices on all platforms.

@@ -19,19 +19,25 @@
 #pragma once
 
 #include <type_traits>
-
+///< 模板类Functor的定义, 使用了C++11中的变长模板参数
 #define FUNCTOR_TYPEDEF(name, rettype, ...) \
     typedef Functor<rettype, ## __VA_ARGS__> name
 
+///< 模板类Functor的声明
 #define FUNCTOR_DECLARE(name, rettype, ...) \
     Functor<rettype, ## __VA_ARGS__> name
 
+///< 使用模板类 Functor 绑定一个给定对象的成员函数指针
 #define FUNCTOR_BIND(obj, func, rettype, ...) \
     Functor<rettype, ## __VA_ARGS__>::bind<std::remove_reference<decltype(*obj)>::type, func>(obj)
 
+///< 使用模板类 Functor 绑定一个当前上下文的类对象的成员函数指针
 #define FUNCTOR_BIND_MEMBER(func, rettype, ...) \
     Functor<rettype, ## __VA_ARGS__>::bind<std::remove_reference<decltype(*this)>::type, func>(this)
 
+/** \brief 仿函数模板类
+  接收一个函数指针, 该指针的返回值与参数列表同时构成模板参数
+*/
 template <class RetType, class... Args>
 class Functor
 {
@@ -68,6 +74,9 @@ public:
         return _method != nullptr;
     }
 
+	/**
+	自动提取一个类中与模板参数一致的成员函数的指针, 绑定至一个 Functor 并返回之.
+	*/
     template<class T, RetType (T::*method)(Args...)>
     static constexpr Functor bind(T *obj)
     {
@@ -78,6 +87,9 @@ private:
     void *_obj;
     RetType (*_method)(void *obj, Args...);
 
+	/**  
+	该模板方法封装了类成员函数指针, 并在合适的上下文调用. 其声明与 method 成员类型一致, 用在 bind 方法中提取类成员函数指针.
+	*/
     template<class T, RetType (T::*method)(Args...)>
     static RetType method_wrapper(void *obj, Args... args)
     {

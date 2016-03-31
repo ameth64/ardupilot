@@ -12,13 +12,20 @@
 #include "system.h"
 #include "OpticalFlow.h"
 
+/*! \brief 通用的硬件抽象层,虚基类.
+
+该类定义了一组抽象数据成员及成员函数, 供其它HAL具象类实现
+*/
 class AP_HAL::HAL {
 public:
-    HAL(AP_HAL::UARTDriver* _uartA, // console
-        AP_HAL::UARTDriver* _uartB, // 1st GPS
-        AP_HAL::UARTDriver* _uartC, // telem1
-        AP_HAL::UARTDriver* _uartD, // telem2
-        AP_HAL::UARTDriver* _uartE, // 2nd GPS
+	/** \brief HAL构造函数
+	初始化各数据成员.
+	*/
+    HAL(AP_HAL::UARTDriver* _uartA, ///< 对应串口console
+        AP_HAL::UARTDriver* _uartB, ///< 对应1st GPS
+        AP_HAL::UARTDriver* _uartC, ///< 对应telem1
+        AP_HAL::UARTDriver* _uartD, ///< 对应telem2
+        AP_HAL::UARTDriver* _uartE, ///< 对应2nd GPS
         AP_HAL::I2CDeviceManager* _i2c_mgr,
         AP_HAL::I2CDriver*  _i2c0,
         AP_HAL::I2CDriver*  _i2c1,
@@ -57,11 +64,15 @@ public:
         AP_HAL::init();
     }
 
+	/** 回调函数的仿函数对象
+	*/
     struct Callbacks {
-        virtual void setup() = 0;
-        virtual void loop() = 0;
+        virtual void setup() = 0;	///< 该方法在硬件系统启动后在 main 函数中被调用, 完成初始化操作
+        virtual void loop() = 0;	///< 该方法由 scheduler 对象定时调用
     };
 
+	/** 回调函数的仿函数对象
+	*/
     struct FunCallbacks : public Callbacks {
         FunCallbacks(void (*setup_fun)(void), void (*loop_fun)(void));
 
@@ -69,11 +80,11 @@ public:
         void loop() override { _loop(); }
 
     private:
-        void (*_setup)(void);
-        void (*_loop)(void);
+        void (*_setup)(void);	///< setup 的函数指针, 见 Callbacks 结构
+        void (*_loop)(void);	///< loop 的函数指针, 见 Callbacks 结构
     };
 
-    virtual void run(int argc, char * const argv[], Callbacks* callbacks) const = 0;
+    virtual void run(int argc, char * const argv[], Callbacks* callbacks) const = 0;	///< 该方法为命令行启动入口
 
     AP_HAL::UARTDriver* uartA;
     AP_HAL::UARTDriver* uartB;

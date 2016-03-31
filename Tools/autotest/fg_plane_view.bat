@@ -1,7 +1,7 @@
 set AUTOTESTDIR="%~dp0\aircraft"
 
 c:
-cd "\Program Files\FlightGear 3.4.0\bin"
+cd "\Program Files\FlightGear 3.4\bin"
 fgfs ^
     --native-fdm=socket,in,10,,5503,udp ^
     --fdm=external ^
