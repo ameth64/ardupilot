@@ -1026,6 +1026,7 @@ private:
     void parachute_release();
     bool parachute_manual_release();
     void accel_cal_update(void);
+	void debug_update_2Hz(void);	///< 加入debug测试方法. by ZX@2016.04.13
 
 public:
     void mavlink_delay_cb();

@@ -31,6 +31,7 @@ void setup(void)
 {
     ins.init(100);
     ahrs.init();
+	serial_manager.init_console();
     serial_manager.init();
 
     if( compass.init() ) {

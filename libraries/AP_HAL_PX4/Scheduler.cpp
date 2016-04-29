@@ -280,7 +280,8 @@ void *PX4Scheduler::_timer_thread(void *arg)
 
         if (px4_ran_overtime && AP_HAL::millis() - last_ran_overtime > 2000) {
             last_ran_overtime = AP_HAL::millis();
-            printf("Overtime in task %d\n", (int)AP_Scheduler::current_task);
+			///< 暂时注释debug serial的串口输出@2016.04.13
+            //printf("Overtime in task %d\n", (int)AP_Scheduler::current_task);
             hal.console->printf("Overtime in task %d\n", (int)AP_Scheduler::current_task);
         }
     }

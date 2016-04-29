@@ -252,20 +252,25 @@ const AP_Param::GroupInfo AP_TECS::var_info[] = {
  *
  */
 
+ /*! 
+ Implement third order complementary filter for height and height rate(对高度及垂直升降率做三阶互补滤波).
+ 
+ estimted height rate(预估垂直升降率) = _climb_rate;
+ 
+ estimated height above field elevation(预估地表高度)  = _height;
+ 
+ Reference Paper: 
+ Optimising the Gains of the Baro-Inertial Vertical Channel
+ 
+ Widnall W.S, Sinha P.K,
+ 
+ AIAA Journal of Guidance and Control, 78-1307R
+ */
 void AP_TECS::update_50hz(float hgt_afe)
 {
-    // Implement third order complementary filter for height and height rate
-    // estimted height rate = _climb_rate
-    // estimated height above field elevation  = _height
-    // Reference Paper :
-    // Optimising the Gains of the Baro-Inertial Vertical Channel
-    // Widnall W.S, Sinha P.K,
-    // AIAA Journal of Guidance and Control, 78-1307R
-
-    /*
-      if we have a vertical position estimate from the EKF then use
-      it, otherwise use barometric altitude
-     */
+      //如果有来自EKF的预估高度则使用之, 否则使用气压计高度
+	  //(if we have a vertical position estimate from the EKF then use
+      //it, otherwise use barometric altitude)
     Vector3f posned;
     if (_ahrs.get_relative_position_NED(posned)) {
         _height = - posned.z;
@@ -279,25 +284,25 @@ void AP_TECS::update_50hz(float hgt_afe)
     if (DT > 1.0f) {
         _climb_rate = 0.0f;
         _height_filter.dd_height = 0.0f;
-        DT            = 0.02f; // when first starting TECS, use a
-        // small time constant
+        DT            = 0.02f; // when first starting TECS, use a small time constant
     }
     _update_50hz_last_usec = now;
 
     // Use inertial nav verical velocity and height if available
+	// 使用贯导单元的垂直速度与高度(若可用)
     Vector3f velned;
     if (_ahrs.get_velocity_NED(velned)) {
-        // if possible use the EKF vertical velocity
+        // if possible use the EKF vertical velocity-若可能则直接使用EKF的垂直速度
         _climb_rate = -velned.z;
     } else {
         /*
           use a complimentary filter to calculate climb_rate. This is
-          designed to minimise lag
+          designed to minimise lag, 否则使用互补滤波来预估爬升率
          */
         float baro_alt = _ahrs.get_baro().get_altitude();
-        // Get height acceleration
+        // Get height acceleration, 获得加速度的垂直分量
         float hgt_ddot_mea = -(_ahrs.get_accel_ef().z + GRAVITY_MSS);
-        // Perform filter calculation using backwards Euler integration
+        // Perform filter calculation using backwards Euler integration-使用后向欧拉积分
         // Coefficients selected to place all three filter poles at omega
         float omega2 = _hgtCompFiltOmega*_hgtCompFiltOmega;
         float hgt_err = baro_alt - _height_filter.height;
@@ -344,7 +349,7 @@ void AP_TECS::_update_speed(float load_factor)
 
     if (aparm.stall_prevention) {
         // when stall prevention is active we raise the mimimum
-        // airspeed based on aerodynamic load factor
+        // airspeed based on aerodynamic load factor-当启用失速保护时,最小速度需乘上过载系数
         _TASmin *= load_factor;
     }
 
@@ -847,6 +852,8 @@ void AP_TECS::_update_pitch(void)
     _last_pitch_dem = _pitch_dem;
 }
 
+/*! 如果DT时间间隔>1 或即将开始爬升, 则初始化状态.
+*/
 void AP_TECS::_initialise_states(int32_t ptchMinCO_cd, float hgt_afe)
 {
     // Initialise states and variables if DT > 1 second or in climbout
@@ -910,6 +917,8 @@ bool AP_TECS::is_on_land_approach(bool include_segment_between_NORMAL_and_APPROA
     return on_land_approach;
 }
 
+/*! \brief 根据TECS进行俯仰角-油门联合控制
+*/
 void AP_TECS::update_pitch_throttle(int32_t hgt_dem_cm,
                                     int32_t EAS_dem_cm,
                                     enum FlightStage flight_stage,

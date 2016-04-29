@@ -50,8 +50,8 @@ const AP_Scheduler::Task Plane::scheduler_tasks[] = {
     SCHED_TASK(read_airspeed,          10,   1200),
     SCHED_TASK(update_alt,             10,   3400),
     SCHED_TASK(adjust_altitude_target, 10,   1000),
-    SCHED_TASK(obc_fs_check,           10,   1000),
-    SCHED_TASK(gcs_update,             50,   1700),
+    SCHED_TASK(obc_fs_check,           10,   5000),	
+    SCHED_TASK(gcs_update,             50,   1700),	///< 可能报Overtime in task 17错误.
     SCHED_TASK(gcs_data_stream_send,   50,   3000),
     SCHED_TASK(update_events,          50,   1500),
     SCHED_TASK(check_usb_mux,          10,    300),
@@ -84,6 +84,7 @@ const AP_Scheduler::Task Plane::scheduler_tasks[] = {
     SCHED_TASK(update_is_flying_5Hz,    5,    100),
     SCHED_TASK(dataflash_periodic,     50,    300),
     SCHED_TASK(adsb_update,             1,    500),
+	SCHED_TASK(debug_update_2Hz,        2,    1500),	///< 测试用
 };
 
 void Plane::setup() 
@@ -102,9 +103,11 @@ void Plane::setup()
     init_ardupilot();
 
     // initialise the main loop scheduler
-    scheduler.init(&scheduler_tasks[0], ARRAY_SIZE(scheduler_tasks));
+	size_t schdl_size = ARRAY_SIZE(scheduler_tasks);
+    scheduler.init(&scheduler_tasks[0], schdl_size);
 	
-	hal.console->printf("Hello from custom build of nnhuishi.com! \n");
+	hal.console->printf("Hello from custom build of nnhuishi.com \n");
+	hal.console->printf("The Scheduler task size is %d \n", schdl_size);
 }
 
 void Plane::loop()
@@ -141,8 +144,13 @@ void Plane::loop()
         remaining = 19500;
     }
 	
-	hal.console->printf("Loop in custom build of nnhuishi.com \n");
     scheduler.run(remaining);
+}
+
+void Plane::debug_update_2Hz()
+{
+	///< 简单打印输出调试信息
+	hal.console->printf("Debug in custom build of nnhuishi.com \n");
 }
 
 // update AHRS system

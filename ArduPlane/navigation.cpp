@@ -55,6 +55,7 @@ void Plane::navigate()
         return;
     }
 
+	///< 下一导航点next_WP_loc的值通过地面站指令指定, 见commands.cpp
     if (next_WP_loc.lat == 0) {
         return;
     }

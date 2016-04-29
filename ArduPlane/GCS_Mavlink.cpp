@@ -2022,8 +2022,10 @@ void Plane::gcs_data_stream_send(void)
  */
 void Plane::gcs_update(void)
 {
+	//hal.console->printf("Ready to updating GCS, total: %d \n", num_gcs);
     for (uint8_t i=0; i<num_gcs; i++) {
         if (gcs[i].initialised) {
+			//hal.console->printf("Updating GCS No. %d \n", i);
 #if CLI_ENABLED == ENABLED
             gcs[i].update(g.cli_enabled == 1 ? FUNCTOR_BIND_MEMBER(&Plane::run_cli, void, AP_HAL::UARTDriver *):NULL);
 #else
