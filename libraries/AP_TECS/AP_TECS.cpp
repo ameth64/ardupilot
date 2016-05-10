@@ -334,6 +334,9 @@ void AP_TECS::update_50hz(float hgt_afe)
 
 }
 
+/*! \brief 更新空速
+注意, 当空速计不可用时, 当量空速将取参数中最大与最小空速区间中值.
+*/
 void AP_TECS::_update_speed(float load_factor)
 {
     // Calculate time in seconds since last update
@@ -341,7 +344,7 @@ void AP_TECS::_update_speed(float load_factor)
     float DT = MAX((now - _update_speed_last_usec), 0U) * 1.0e-6f;
     _update_speed_last_usec = now;
 
-    // Convert equivalent airspeeds to true airspeeds
+    // Convert equivalent airspeeds to true airspeeds 当量空速转换为真真实空速
 
     float EAS2TAS = _ahrs.get_EAS2TAS();
     _TASmax   = aparm.airspeed_max * EAS2TAS;
@@ -390,7 +393,7 @@ void AP_TECS::_update_speed(float load_factor)
 
     // Implement a second order complementary filter to obtain a
     // smoothed airspeed estimate
-    // airspeed estimate is held in _integ5_state
+    // airspeed estimate is held in _integ5_state(实现二阶互补滤波, 预估空速保存于变量_integ5_state)
     float aspdErr = (_EAS * EAS2TAS) - _integ5_state;
     float integ4_input = aspdErr * _spdCompFiltOmega * _spdCompFiltOmega;
     // Prevent state from winding up
