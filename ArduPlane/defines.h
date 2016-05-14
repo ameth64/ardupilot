@@ -1,7 +1,5 @@
 // -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
-
-#ifndef _DEFINES_H
-#define _DEFINES_H
+#pragma once
 
 ///< Internal defines, don't edit and expect things to work
 // -------------------------------------------------------
@@ -66,7 +64,9 @@ enum FlightMode {
     INITIALISING  = 16,
     QSTABILIZE    = 17,
     QHOVER        = 18,
-    QLOITER       = 19
+    QLOITER       = 19,
+    QLAND         = 20,
+    QRTL          = 21
 };
 
 // type of stick mixing enabled
@@ -112,12 +112,13 @@ enum log_messages {
     LOG_STARTUP_MSG,
     TYPE_AIRSTART_MSG,
     TYPE_GROUNDSTART_MSG,
-    LOG_TECS_MSG,
     LOG_RC_MSG,
     LOG_SONAR_MSG,
     LOG_ARM_DISARM_MSG,
     LOG_STATUS_MSG,
-    LOG_OPTFLOW_MSG
+    LOG_OPTFLOW_MSG,
+    LOG_QTUN_MSG,
+    LOG_PARAMTUNE_MSG
 };
 
 #define MASK_LOG_ATTITUDE_FAST          (1<<0)
@@ -136,7 +137,6 @@ enum log_messages {
 #define MASK_LOG_RC                     (1<<13)
 #define MASK_LOG_SONAR                  (1<<14)
 #define MASK_LOG_ARM_DISARM             (1<<15)
-#define MASK_LOG_WHEN_DISARMED          (1UL<<16)
 #define MASK_LOG_IMU_RAW                (1UL<<19)
 
 // Waypoint Modes
@@ -206,5 +206,3 @@ enum {
     USE_REVERSE_THRUST_FBWB                     = (1<<9),
     USE_REVERSE_THRUST_GUIDED                   = (1<<10),
 };
-
-#endif // _DEFINES_H

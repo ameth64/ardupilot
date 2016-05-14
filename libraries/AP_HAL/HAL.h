@@ -26,6 +26,12 @@ public:
         AP_HAL::UARTDriver* _uartC, ///< 对应telem1
         AP_HAL::UARTDriver* _uartD, ///< 对应telem2
         AP_HAL::UARTDriver* _uartE, ///< 对应2nd GPS
+    HAL(AP_HAL::UARTDriver* _uartA, // console
+        AP_HAL::UARTDriver* _uartB, // 1st GPS
+        AP_HAL::UARTDriver* _uartC, // telem1
+        AP_HAL::UARTDriver* _uartD, // telem2
+        AP_HAL::UARTDriver* _uartE, // 2nd GPS
+        AP_HAL::UARTDriver* _uartF, // extra1
         AP_HAL::I2CDeviceManager* _i2c_mgr,
         AP_HAL::I2CDriver*  _i2c0,
         AP_HAL::I2CDriver*  _i2c1,
@@ -46,6 +52,7 @@ public:
         uartC(_uartC),
         uartD(_uartD),
         uartE(_uartE),
+        uartF(_uartF),
         i2c_mgr(_i2c_mgr),
         i2c(_i2c0),
         i2c1(_i2c1),
@@ -91,6 +98,7 @@ public:
     AP_HAL::UARTDriver* uartC;
     AP_HAL::UARTDriver* uartD;
     AP_HAL::UARTDriver* uartE;
+    AP_HAL::UARTDriver* uartF;
     AP_HAL::I2CDeviceManager* i2c_mgr;
     AP_HAL::I2CDriver*  i2c;
     AP_HAL::I2CDriver*  i2c1;

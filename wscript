@@ -19,11 +19,9 @@ from waflib import Build, ConfigSet, Context, Utils
 # pastable. Add the 'export waf="$PWD/waf"' trick to be copy-pastable
 # as well.
 
-# TODO: replace defines with the use of a generated config.h file
+# TODO: replace defines with the use of the generated ap_config.h file
 # this makes recompilation at least when defines change. which might
 # be sufficient.
-
-# TODO: set git version as part of build preparation.
 
 def init(ctx):
     env = ConfigSet.ConfigSet()
@@ -32,11 +30,14 @@ def init(ctx):
     except:
         return
 
+    if 'VARIANT' not in env:
+        return
+
     # define the variant build commands according to the board
     for c in Context.classes:
         if not issubclass(c, Build.BuildContext):
             continue
-        c.variant = env.BOARD
+        c.variant = env.VARIANT
 
 def options(opt):
     opt.load('compiler_cxx compiler_c waf_unit_test python')
@@ -69,17 +70,26 @@ def options(opt):
                  default=False,
                  help='Enable benchmarks')
 
+    g.add_option('--debug',
+                 action='store_true',
+                 default=False,
+                 help='Configure as debug variant')
+
 def configure(cfg):
     cfg.env.BOARD = cfg.options.board
-    # use a different variant for each board
-    cfg.setenv(cfg.env.BOARD)
+    cfg.env.DEBUG = cfg.options.debug
+
+    cfg.env.VARIANT = cfg.env.BOARD
+    if cfg.env.DEBUG:
+        cfg.env.VARIANT += '-debug'
+    cfg.setenv(cfg.env.VARIANT)
+
+    cfg.env.BOARD = cfg.options.board
+    cfg.env.DEBUG = cfg.options.debug
 
     cfg.msg('Setting board to', cfg.options.board)
-    cfg.env.BOARD = cfg.options.board
     boards.get_board(cfg.env.BOARD).configure(cfg)
 
-    cfg.load('toolchain')
-    cfg.load('compiler_cxx compiler_c')
     cfg.load('clang_compilation_database')
     cfg.load('waf_unit_test')
     cfg.load('mavgen')
@@ -114,11 +124,21 @@ def configure(cfg):
     ])
 
     if cfg.options.submodule_update:
-        cfg.env.SUBMODULE_UPDATE = [True]
+        cfg.env.SUBMODULE_UPDATE = True
+
+    # Always use system extensions
+    cfg.define('_GNU_SOURCE', 1)
+
+    cfg.write_config_header(os.path.join(cfg.variant, 'ap_config.h'))
 
 def collect_dirs_to_recurse(bld, globs, **kw):
     dirs = []
     globs = Utils.to_list(globs)
+
+    if bld.bldnode.is_child_of(bld.srcnode):
+        kw['excl'] = Utils.to_list(kw.get('excl', []))
+        kw['excl'].append(bld.bldnode.path_from(bld.srcnode))
+
     for g in globs:
         for d in bld.srcnode.ant_glob(g + '/wscript', **kw):
             dirs.append(d.parent.relpath())
@@ -151,6 +171,10 @@ def _build_dynamic_sources(bld):
             bld.bldnode.make_node('libraries/GCS_MAVLink').abspath(),
         ],
     )
+
+    bld.env.prepend_value('INCLUDES', [
+        bld.bldnode.abspath(),
+    ])
 
 def _build_common_taskgens(bld):
     # NOTE: Static library with vehicle set to UNKNOWN, shared by all
@@ -213,7 +237,17 @@ def _build_recursion(bld):
     for d in dirs_to_recurse:
         bld.recurse(d)
 
+def _write_version_header(tsk):
+    bld = tsk.generator.bld
+    return bld.write_version_header(tsk.outputs[0].abspath())
+
+
 def build(bld):
+    config_header = Utils.h_file(bld.bldnode.make_node('ap_config.h').abspath())
+
+    bld.env.CCDEPS = config_header
+    bld.env.CXXDEPS = config_header
+
     bld.post_mode = Build.POST_LAZY
 
     bld.load('ardupilotwaf')
@@ -229,9 +263,19 @@ def build(bld):
     _build_dynamic_sources(bld)
 
     bld.add_group('build')
+    boards.get_board(bld.env.BOARD).build(bld)
     _build_common_taskgens(bld)
 
     _build_recursion(bld)
+
+    bld(
+        name='ap_version',
+        target='ap_version.h',
+        vars=['AP_VERSION_ITEMS'],
+        rule=_write_version_header,
+        group='dynamic_sources',
+    )
+
 
 ardupilotwaf.build_command('check',
     program_group_list='all',
@@ -242,18 +286,11 @@ ardupilotwaf.build_command('check-all',
     doc='shortcut for `waf check --alltests`',
 )
 
-ardupilotwaf.build_command('copter',
-    targets='bin/arducopter',
-    doc='builds arducopter',
-)
-ardupilotwaf.build_command('plane',
-    targets='bin/arduplane',
-    doc='builds arduplane',
-)
-ardupilotwaf.build_command('rover',
-    targets='bin/ardurover',
-    doc='builds ardurover',
-)
+for name in ('antennatracker', 'copter', 'plane', 'rover'):
+    ardupilotwaf.build_command(name,
+        program_group_list=name,
+        doc='builds %s programs' % name,
+    )
 
 for program_group in ('all', 'bin', 'tools', 'examples', 'tests', 'benchmarks'):
     ardupilotwaf.build_command(program_group,

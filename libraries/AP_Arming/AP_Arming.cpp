@@ -33,7 +33,7 @@ const AP_Param::GroupInfo AP_Arming::var_info[] = {
     // @Description: Arming disabled until some requirements are met. If 0, there are no requirements (arm immediately).  If 1, require rudder stick or GCS arming before arming motors and send THR_MIN PWM to throttle channel when disarmed.  If 2, require rudder stick or GCS arming and send 0 PWM to throttle channel when disarmed. See the ARMING_CHECK_* parameters to see what checks are done before arming. Note, if setting this parameter to 0 a reboot is required to arm the plane.  Also note, even with this parameter at 0, if ARMING_CHECK parameter is not also zero the plane may fail to arm throttle at boot due to a pre-arm check failure.
     // @Values: 0:Disabled,1:THR_MIN PWM when disarmed,2:0 PWM when disarmed
     // @User: Advanced
-    AP_GROUPINFO("REQUIRE",     0,      AP_Arming,  require,                 1),
+    AP_GROUPINFO_FLAGS("REQUIRE",     0,      AP_Arming,  require,                 1, AP_PARAM_NO_SHIFT),
 
     // @Param: CHECK
     // @DisplayName: Arm Checks to Peform (bitmask)
@@ -51,16 +51,33 @@ const AP_Param::GroupInfo AP_Arming::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("ACCTHRESH",    3,     AP_Arming,  accel_error_threshold,  AP_ARMING_ACCEL_ERROR_THRESHOLD),
 
+    // @Param: MIN_VOLT
+    // @DisplayName: Minimum arming voltage on the first battery
+    // @Description: The minimum voltage on the first battery to arm, 0 disabes the check
+    // @Units: Volts
+    // @Increment: 0.1 
+    // @User: Standard
+    AP_GROUPINFO("MIN_VOLT",      4,     AP_Arming,  _min_voltage[0],  0),
+
+    // @Param: MIN_VOLT2
+    // @DisplayName: Minimum arming voltage on the second battery
+    // @Description: The minimum voltage on the first battery to arm, 0 disabes the check
+    // @Units: Volts
+    // @Increment: 0.1 
+    // @User: Standard
+    AP_GROUPINFO("MIN_VOLT2",     5,     AP_Arming,  _min_voltage[1],  0),
+
     AP_GROUPEND
 };
 
 //The function point is particularly hacky, hacky, tacky
 //but I don't want to reimplement messaging to GCS at the moment:
 AP_Arming::AP_Arming(const AP_AHRS &ahrs_ref, const AP_Baro &baro, Compass &compass,
-                     const enum HomeState &home_set) :
+                     const AP_BattMonitor &battery, const enum HomeState &home_set) :
     ahrs(ahrs_ref),
     barometer(baro),
     _compass(compass),
+    _battery(battery),
     home_is_set(home_set),
     armed(false),
     logging_available(false),
@@ -193,6 +210,9 @@ bool AP_Arming::ins_checks(bool report)
                      */
                     threshold *= 3;
                 }
+                // EKF is less sensitive to Z-axis error and Z-axis is more
+                // likely to be temperature-sensitive on our hardware
+                vec_diff.z *= 0.5f;
                 if (vec_diff.length() <= threshold) {
                     last_accel_pass_ms[i] = AP_HAL::millis();
                 }
@@ -323,8 +343,9 @@ bool AP_Arming::gps_checks(bool report)
         if (first_unconfigured != AP_GPS::GPS_ALL_CONFIGURED) {
             if (report) {
                 GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL,
-                                                 "PreArm: GPS %d has not been fully configured",
-                                                  first_unconfigured);
+                                                 "PreArm: GPS %d failing configuration checks",
+                                                  first_unconfigured + 1);
+                gps.broadcast_first_configuration_failure_reason();
             }
 #if CONFIG_HAL_BOARD != HAL_BOARD_SITL
             return false;
@@ -345,8 +366,19 @@ bool AP_Arming::battery_checks(bool report)
             }
             return false;
         }
-    }
 
+        for (int i = 0; i < AP_BATT_MONITOR_MAX_INSTANCES; i++) {
+            if ((_min_voltage[i] > 0.0f) && (_battery.voltage(i) < _min_voltage[i])) {
+                if (report) {
+                    GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL, "PreArm: Battery %d voltage %.1f below minimum %.1f",
+                            i+1,
+                            (double)_battery.voltage(i),
+                            (double)_min_voltage[i]);
+                }
+                return false;
+            }
+        }
+     }
     return true;
 }
 
@@ -425,7 +457,7 @@ bool AP_Arming::pre_arm_checks(bool report)
     return ret;
 }
 
-//returns true if arming occured successfully
+//returns true if arming occurred successfully
 bool AP_Arming::arm(uint8_t method)
 {
     if (armed) { //already armed
