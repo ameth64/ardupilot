@@ -1072,10 +1072,10 @@ float QuadPlane::assist_climb_rate_cms(void)
     }
     climb_rate = constrain_float(climb_rate, -wp_nav->get_speed_down(), wp_nav->get_speed_up());
 
-    // bring in the demanded climb rate over 2 seconds
+    // bring in the demanded climb rate over 1 seconds
     uint16_t dt_since_start = last_pidz_active_ms - last_pidz_init_ms;
-    if (dt_since_start < 2000) {
-        climb_rate = linear_interpolate(0, climb_rate, dt_since_start, 0, 2000);
+    if (dt_since_start < 1000) {
+        climb_rate = linear_interpolate(0, climb_rate, dt_since_start, 0, 1000);
     }
     
     return climb_rate;
