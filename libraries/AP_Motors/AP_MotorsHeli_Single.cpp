@@ -28,7 +28,7 @@ const AP_Param::GroupInfo AP_MotorsHeli_Single::var_info[] = {
     // @DisplayName: Servo 1 Position
     // @Description: Angular location of swash servo #1
     // @Range: -180 180
-    // @Units: Degrees
+    // @Units: deg
     // @User: Standard
     // @Increment: 1
     AP_GROUPINFO("SV1_POS", 1, AP_MotorsHeli_Single, _servo1_pos, AP_MOTORS_HELI_SINGLE_SERVO1_POS),
@@ -37,7 +37,7 @@ const AP_Param::GroupInfo AP_MotorsHeli_Single::var_info[] = {
     // @DisplayName: Servo 2 Position
     // @Description: Angular location of swash servo #2
     // @Range: -180 180
-    // @Units: Degrees
+    // @Units: deg
     // @User: Standard
     // @Increment: 1
     AP_GROUPINFO("SV2_POS", 2, AP_MotorsHeli_Single, _servo2_pos, AP_MOTORS_HELI_SINGLE_SERVO2_POS),
@@ -46,7 +46,7 @@ const AP_Param::GroupInfo AP_MotorsHeli_Single::var_info[] = {
     // @DisplayName: Servo 3 Position
     // @Description: Angular location of swash servo #3
     // @Range: -180 180
-    // @Units: Degrees
+    // @Units: deg
     // @User: Standard
     // @Increment: 1
     AP_GROUPINFO("SV3_POS", 3, AP_MotorsHeli_Single, _servo3_pos, AP_MOTORS_HELI_SINGLE_SERVO3_POS),
@@ -67,7 +67,7 @@ const AP_Param::GroupInfo AP_MotorsHeli_Single::var_info[] = {
 
     // @Param: GYR_GAIN
     // @DisplayName: External Gyro Gain
-    // @Description: PWM sent to external gyro on ch7 when tail type is Servo w/ ExtGyro
+    // @Description: PWM in microseconds sent to external gyro on ch7 when tail type is Servo w/ ExtGyro
     // @Range: 0 1000
     // @Units: PWM
     // @Increment: 1
@@ -78,7 +78,7 @@ const AP_Param::GroupInfo AP_MotorsHeli_Single::var_info[] = {
     // @DisplayName: Swashplate Phase Angle Compensation
     // @Description: Phase angle correction for rotor head.  If pitching the swash forward induces a roll, this can be correct the problem
     // @Range: -90 90
-    // @Units: Degrees
+    // @Units: deg
     // @User: Advanced
     // @Increment: 1
     AP_GROUPINFO("PHANG", 7, AP_MotorsHeli_Single, _phase_angle, 0),
@@ -100,7 +100,7 @@ const AP_Param::GroupInfo AP_MotorsHeli_Single::var_info[] = {
   
     // @Param: TAIL_SPEED
     // @DisplayName: Direct Drive VarPitch Tail ESC speed
-    // @Description: Direct Drive VarPitch Tail ESC speed.  Only used when TailType is DirectDrive VarPitch
+    // @Description: Direct Drive VarPitch Tail ESC speed in PWM microseconds.  Only used when TailType is DirectDrive VarPitch
     // @Range: 0 1000
     // @Units: PWM
     // @Increment: 1
@@ -109,7 +109,7 @@ const AP_Param::GroupInfo AP_MotorsHeli_Single::var_info[] = {
 
     // @Param: GYR_GAIN_ACRO
     // @DisplayName: External Gyro Gain for ACRO
-    // @Description: PWM sent to external gyro on ch7 when tail type is Servo w/ ExtGyro. A value of zero means to use H_GYR_GAIN
+    // @Description: PWM in microseconds sent to external gyro on ch7 when tail type is Servo w/ ExtGyro. A value of zero means to use H_GYR_GAIN
     // @Range: 0 1000
     // @Units: PWM
     // @Increment: 1
@@ -553,7 +553,7 @@ bool AP_MotorsHeli_Single::parameter_check(bool display_msg) const
     // returns false if Phase Angle is outside of range 
     if ((_phase_angle > 90) || (_phase_angle < -90)){
         if (display_msg) {
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL, "PreArm: H_PHANG out of range");
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "PreArm: H_PHANG out of range");
         }
         return false;
     }
@@ -561,7 +561,7 @@ bool AP_MotorsHeli_Single::parameter_check(bool display_msg) const
     // returns false if Acro External Gyro Gain is outside of range
     if ((_ext_gyro_gain_acro < 0) || (_ext_gyro_gain_acro > 1000)){
         if (display_msg) {
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL, "PreArm: H_GYR_GAIN_ACRO out of range");
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "PreArm: H_GYR_GAIN_ACRO out of range");
         }
         return false;
     }
@@ -569,7 +569,7 @@ bool AP_MotorsHeli_Single::parameter_check(bool display_msg) const
     // returns false if Standard External Gyro Gain is outside of range
     if ((_ext_gyro_gain_std < 0) || (_ext_gyro_gain_std > 1000)){
         if (display_msg) {
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL, "PreArm: H_GYR_GAIN out of range");
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "PreArm: H_GYR_GAIN out of range");
         }
         return false;
     }

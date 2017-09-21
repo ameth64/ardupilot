@@ -43,7 +43,7 @@ void AP_MotorsTri::init(motor_frame_class frame_class, motor_frame_type frame_ty
     // find the yaw servo
     _yaw_servo = SRV_Channels::get_channel_for(SRV_Channel::k_motor7, AP_MOTORS_CH_TRI_YAW);
     if (!_yaw_servo) {
-        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "MotorsTri: unable to setup yaw channel");
+        gcs().send_text(MAV_SEVERITY_ERROR, "MotorsTri: unable to setup yaw channel");
         // don't set initialised_ok
         return;
     }
@@ -319,4 +319,16 @@ void AP_MotorsTri::thrust_compensation(void)
         _thrust_left  = thrust[1];
         _thrust_rear  = thrust[3];
     }
+}
+
+/*
+  override tricopter tail servo output in output_motor_mask
+ */
+void AP_MotorsTri::output_motor_mask(float thrust, uint8_t mask)
+{
+    // normal multicopter output
+    AP_MotorsMulticopter::output_motor_mask(thrust, mask);
+
+    // and override yaw servo
+    rc_write(AP_MOTORS_CH_TRI_YAW, _yaw_servo->get_trim());
 }

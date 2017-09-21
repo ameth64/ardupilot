@@ -56,7 +56,7 @@
 #define PDCNTL_REG 0x42
 #define PDCNTL_VAL_PULSE_DURATION_NORMAL 0xC0
 
-#define SAMPLING_PERIOD_USEC (10 * USEC_PER_MSEC)
+#define SAMPLING_PERIOD_USEC (10 * AP_USEC_PER_MSEC)
 
 /*
  * FSR:
@@ -204,8 +204,6 @@ void AP_Compass_IST8310::timer()
         return;
     }
 
-    uint32_t now = AP_HAL::micros();
-
     start_conversion();
 
     /* same period, but start counting from now */
@@ -236,7 +234,7 @@ void AP_Compass_IST8310::timer()
     rotate_field(field, _instance);
 
     /* publish raw_field (uncorrected point sample) for calibration use */
-    publish_raw_field(field, now, _instance);
+    publish_raw_field(field, _instance);
 
     /* correct raw_field for known errors */
     correct_field(field, _instance);

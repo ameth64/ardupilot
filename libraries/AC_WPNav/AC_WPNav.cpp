@@ -19,7 +19,7 @@ const AP_Param::GroupInfo AC_WPNav::var_info[] = {
     // @DisplayName: Waypoint Radius
     // @Description: Defines the distance from a waypoint, that when crossed indicates the wp has been hit.
     // @Units: cm
-    // @Range: 100 1000
+    // @Range: 10 1000
     // @Increment: 1
     // @User: Standard
     AP_GROUPINFO("RADIUS",      1, AC_WPNav, _wp_radius_cm, WPNAV_WP_RADIUS),
@@ -142,8 +142,9 @@ AC_WPNav::AC_WPNav(const AP_InertialNav& inav, const AP_AHRS_View& ahrs, AC_PosC
     _flags.new_wp_destination = false;
     _flags.segment_type = SEGMENT_STRAIGHT;
 
-    // sanity check loiter speed
+    // sanity check some parameters
     _loiter_speed_cms = MAX(_loiter_speed_cms, WPNAV_LOITER_SPEED_MIN);
+    _wp_radius_cm = MAX(_wp_radius_cm, WPNAV_WP_RADIUS_MIN);
 }
 
 ///
@@ -261,12 +262,12 @@ void AC_WPNav::calc_loiter_desired_velocity(float nav_dt, float ekfGndSpdLimit)
     // constrain and scale the desired acceleration
     float des_accel_change_total = norm(des_accel_diff.x, des_accel_diff.y);
     float accel_change_max = _loiter_jerk_max_cmsss * nav_dt;
-    
+
     if (_loiter_jerk_max_cmsss > 0.0f && des_accel_change_total > accel_change_max && des_accel_change_total > 0.0f) {
         des_accel_diff.x = accel_change_max * des_accel_diff.x/des_accel_change_total;
         des_accel_diff.y = accel_change_max * des_accel_diff.y/des_accel_change_total;
     }
-    
+
     // adjust the desired acceleration
     _loiter_desired_accel += des_accel_diff;
 
@@ -469,6 +470,13 @@ bool AC_WPNav::set_wp_destination(const Vector3f& destination, bool terrain_alt)
     return set_wp_origin_and_destination(origin, destination, terrain_alt);
 }
 
+/// set waypoint destination using NED position vector from ekf origin in meters
+bool AC_WPNav::set_wp_destination_NED(const Vector3f& destination_NED)
+{
+    // convert NED to NEU and do not use terrain following
+    return set_wp_destination(Vector3f(destination_NED.x * 100.0f, destination_NED.y * 100.0f, -destination_NED.z * 100.0f), false);
+}
+
 /// set_origin_and_destination - set origin and destination waypoints using position vectors (distance from home in cm)
 ///     terrain_alt should be true if origin.z and destination.z are desired altitudes above terrain (false if these are alt-above-ekf-origin)
 ///     returns false on failure (likely caused by missing terrain data)
@@ -512,6 +520,7 @@ bool AC_WPNav::set_wp_origin_and_destination(const Vector3f& origin, const Vecto
     _flags.slowing_down = false;    // target is not slowing down yet
     _flags.segment_type = SEGMENT_STRAIGHT;
     _flags.new_wp_destination = true;   // flag new waypoint so we can freeze the pos controller's feed forward and smooth the transition
+    _flags.wp_yaw_set = false;
 
     // initialise the limited speed to current speed along the track
     const Vector3f &curr_vel = _inav.get_velocity();
@@ -1017,6 +1026,7 @@ bool AC_WPNav::set_spline_origin_and_destination(const Vector3f& origin, const V
     _flags.reached_destination = false;
     _flags.segment_type = SEGMENT_SPLINE;
     _flags.new_wp_destination = true;   // flag new waypoint so we can freeze the pos controller's feed forward and smooth the transition
+    _flags.wp_yaw_set = false;
 
     // initialise yaw related variables
     _track_length_xy = safe_sqrt(sq(_destination.x - _origin.x)+sq(_destination.y - _origin.y));  // horizontal track length (used to decide if we should update yaw)

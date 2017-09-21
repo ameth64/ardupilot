@@ -11,7 +11,7 @@
  # define AP_BATT_CURR_PIN                  101
  # define AP_BATT_VOLTDIVIDER_DEFAULT       1.1f
  # define AP_BATT_CURR_AMP_PERVOLT_DEFAULT  17.0f
-#elif CONFIG_HAL_BOARD == HAL_BOARD_PX4 && (defined(CONFIG_ARCH_BOARD_PX4FMU_V2) || defined(CONFIG_ARCH_BOARD_PX4FMU_V4))
+#elif CONFIG_HAL_BOARD == HAL_BOARD_PX4 && (defined(CONFIG_ARCH_BOARD_PX4FMU_V2) || defined(CONFIG_ARCH_BOARD_PX4FMU_V4) || defined(CONFIG_ARCH_BOARD_PX4FMU_V4PRO))
  // pixhawk
  # define AP_BATT_VOLT_PIN                  2
  # define AP_BATT_CURR_PIN                  3
@@ -86,6 +86,9 @@ public:
 
     /// Read the battery voltage and current.  Should be called at 10hz
     void read();
+
+    /// returns true if battery monitor provides current info
+    bool has_current() const override;
 
 protected:
 
