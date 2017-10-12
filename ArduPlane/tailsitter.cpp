@@ -116,9 +116,9 @@ bool QuadPlane::tailsitter_transition_complete(void)
         // transition immediately
         return true;
     }
-    if (labs(ahrs_view->pitch_sensor) > tailsitter.transition_angle*100 ||
-        labs(ahrs_view->roll_sensor) > tailsitter.transition_angle*100 ||
-        AP_HAL::millis() - transition_start_ms > 2000) {
+    if ((labs(ahrs_view->pitch_sensor) > tailsitter.transition_angle*100 ||
+        labs(ahrs_view->roll_sensor) > tailsitter.transition_angle*100) ||
+        (AP_HAL::millis() - transition_start_ms > (unsigned)transition_time_ms) ) {
         return true;
     }
     // still waiting
