@@ -1523,9 +1523,11 @@ void QuadPlane::control_run(void)
         break;
     }
     // we also stabilize using fixed wing surfaces
-    float speed_scaler = plane.get_speed_scaler();
-    plane.stabilize_roll(speed_scaler);
-    plane.stabilize_pitch(speed_scaler);
+    if (!is_tailsitter()){
+        float speed_scaler = plane.get_speed_scaler();
+        plane.stabilize_roll(speed_scaler);
+        plane.stabilize_pitch(speed_scaler);
+    }    
 }
 
 /*
