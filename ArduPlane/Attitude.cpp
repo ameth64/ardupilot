@@ -80,6 +80,14 @@ void Plane::stabilize_roll(float speed_scaler)
     if (control_mode == STABILIZE && channel_roll->get_control_in() != 0) {
         disable_integrator = true;
     }
+    // added for abnormal attitude recover by MobiuS@20170705
+    if ((control_mode == STABILIZE || control_mode == FLY_BY_WIRE_A || control_mode == AUTO || control_mode == RTL) &&
+            ((ahrs.roll_sensor < 0 && ahrs.roll_sensor < -1.75f * aparm.roll_limit_cd) || 
+             (ahrs.roll_sensor > 0 && ahrs.roll_sensor > 1.75f * aparm.roll_limit_cd)) ) 
+    {
+        // set mode to QRTL
+        set_mode(QRTL, MODE_REASON_UNKNOWN);
+    }
     SRV_Channels::set_output_scaled(SRV_Channel::k_aileron, rollController.get_servo_out(nav_roll_cd - ahrs.roll_sensor, 
                                                                                          speed_scaler, 
                                                                                          disable_integrator));
@@ -103,6 +111,14 @@ void Plane::stabilize_pitch(float speed_scaler)
     bool disable_integrator = false;
     if (control_mode == STABILIZE && channel_pitch->get_control_in() != 0) {
         disable_integrator = true;
+    }
+    // added for abnormal attitude recover by MobiuS@20170705
+    if ( (control_mode == STABILIZE || control_mode == FLY_BY_WIRE_A || control_mode == AUTO || control_mode == RTL) &&
+            ((ahrs.pitch_sensor < 0 && ahrs.pitch_sensor < 1.75f * aparm.pitch_limit_min_cd) || 
+             (ahrs.pitch_sensor > 0 && ahrs.pitch_sensor > 1.75f * aparm.pitch_limit_max_cd)) ) 
+    {
+        // set mode to QRTL
+        set_mode(QRTL, MODE_REASON_UNKNOWN);
     }
     SRV_Channels::set_output_scaled(SRV_Channel::k_elevator, pitchController.get_servo_out(demanded_pitch - ahrs.pitch_sensor, 
                                                                                            speed_scaler, 
