@@ -377,6 +377,15 @@ protected:
     const AP_AHRS_View&  _ahrs;
     const AP_Vehicle::MultiCopter &_aparm;
     AP_Motors&          _motors;
+	
+	// added by MobiuS@2016.08.16 for logging
+    float _attitude_error_vector_x, _attitude_error_vector_y, _attitude_error_vector_z;
+    float _target_ang_vel_quat_2, _target_ang_vel_quat_3, _target_ang_vel_quat_4;
+    float _heading_quat_1, _heading_quat_2, _heading_quat_3, _heading_quat_4;
+    float _att_from_quat_1, _att_from_quat_2, _att_from_quat_3, _att_from_quat_4;
+    float _att_to_quat_1, _att_to_quat_2, _att_to_quat_3, _att_to_quat_4;
+    float _rotation_z;
+    float _euler_yaw;
 
 protected:
     /*

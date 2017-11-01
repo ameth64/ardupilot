@@ -48,7 +48,39 @@ void AC_AttitudeControl::control_monitor_log(void)
                                            (double)sqrtf(_control_monitor.rms_pitch_P),
                                            (double)sqrtf(_control_monitor.rms_pitch_D),
                                            (double)sqrtf(_control_monitor.rms_yaw));
+    DataFlash_Class::instance()->Log_Write(
+		"ACYA", "TUS,TEA,RTAVX,RTAVY,RTAVZ,AEVX,AEVY,AEVZ,TAQ1,TAQ2,TAQ3,YW", "Qfffffffffff",
+		AP_HAL::micros64(),
+		//_ahrs.get_gyro().z,
+		_thrust_error_angle,
+		_rate_target_ang_vel.x,
+		_rate_target_ang_vel.y,
+		_rate_target_ang_vel.z,
+		_attitude_error_vector_x,
+		_attitude_error_vector_y,
+		_attitude_error_vector_z,
+		_target_ang_vel_quat_2,
+		_target_ang_vel_quat_3,
+		_target_ang_vel_quat_4,
+		_euler_yaw);
 
+	DataFlash_Class::instance()->Log_Write(
+		"ACTH", "TUS,RZ,AFQ1,AFQ2,AFQ3,AFQ4,ATQ1,ATQ2,ATQ3,ATQ4,HQ1,HQ2,HQ3,HQ4", "Qfffffffffffff",
+		AP_HAL::micros64(),	
+		_rotation_z,
+		_att_from_quat_1,
+		_att_from_quat_2,
+		_att_from_quat_3,
+		_att_from_quat_4,
+		_att_to_quat_1,
+		_att_to_quat_2,
+		_att_to_quat_3,
+		_att_to_quat_4,
+		_heading_quat_1,
+		_heading_quat_2,
+		_heading_quat_3,
+		_heading_quat_4
+	);
 }
 
 /*

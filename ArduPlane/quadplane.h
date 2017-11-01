@@ -422,4 +422,6 @@ public:
                                      uint8_t motor_count);
 private:
     void motor_test_stop();
+    
+    int32_t _trans_altitude_cm, _current_altitude_cm;
 };

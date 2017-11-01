@@ -1099,8 +1099,12 @@ float QuadPlane::assist_climb_rate_cms(void)
         climb_rate = plane.altitude_error_cm / 10.0f;
     } else {
         // otherwise estimate from pilot input
-        climb_rate = plane.g.flybywire_climb_rate * (plane.nav_pitch_cd/(float)plane.aparm.pitch_limit_max_cd);
-        climb_rate *= plane.channel_throttle->get_control_in();
+        //climb_rate = plane.g.flybywire_climb_rate * (plane.nav_pitch_cd/(float)plane.aparm.pitch_limit_max_cd);
+        //climb_rate *= plane.channel_throttle->get_control_in();
+        // added by MobiuS@2016.09.18 to control altitude in transition
+        _current_altitude_cm = plane.adjusted_altitude_cm();
+        climb_rate = (float)(_trans_altitude_cm - _current_altitude_cm)* 0.5f 
+                     + 0.25f * plane.channel_throttle->get_control_in() * (plane.g.flybywire_climb_rate);
     }
     climb_rate = constrain_float(climb_rate, -wp_nav->get_speed_down(), wp_nav->get_speed_up());
 
@@ -1225,6 +1229,7 @@ void QuadPlane::update_transition(void)
         }
         transition_state = TRANSITION_AIRSPEED_WAIT;
         transition_start_ms = millis();
+        _trans_altitude_cm = plane.adjusted_altitude_cm();
         assisted_flight = true;
     } else {
         assisted_flight = false;
@@ -1268,6 +1273,7 @@ void QuadPlane::update_transition(void)
         if (transition_start_ms == 0) {
             gcs().send_text(MAV_SEVERITY_INFO, "Transition airspeed wait");
             transition_start_ms = millis();
+            _trans_altitude_cm = plane.adjusted_altitude_cm();
         }
 
         if (have_airspeed && aspeed > plane.aparm.airspeed_min && !assisted_flight) {

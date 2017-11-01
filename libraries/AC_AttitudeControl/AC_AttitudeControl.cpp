@@ -197,6 +197,8 @@ void AC_AttitudeControl::input_euler_angle_roll_pitch_euler_rate_yaw(float euler
     float euler_roll_angle = radians(euler_roll_angle_cd*0.01f);
     float euler_pitch_angle = radians(euler_pitch_angle_cd*0.01f);
     float euler_yaw_rate = radians(euler_yaw_rate_cds*0.01f);
+    // added by MobiuS@2016.08.29 for logging	
+    _euler_yaw = euler_yaw_rate;
 
     // calculate the attitude target euler angles
     _attitude_target_quat.to_euler(_attitude_target_euler_angle.x, _attitude_target_euler_angle.y, _attitude_target_euler_angle.z);
@@ -413,6 +415,8 @@ void AC_AttitudeControl::attitude_controller_run_quat()
     // Compute attitude error
     Vector3f attitude_error_vector;
     thrust_heading_rotation_angles(_attitude_target_quat, attitude_vehicle_quat, attitude_error_vector, _thrust_error_angle);
+    // added by MobiuS@2016.08.16 for logging
+    _attitude_error_vector_x = attitude_error_vector.x, _attitude_error_vector_y = attitude_error_vector.y, _attitude_error_vector_z = attitude_error_vector.z;
 
     // Compute the angular velocity target from the attitude error
     _rate_target_ang_vel = update_ang_vel_target_from_att_error(attitude_error_vector);
@@ -425,6 +429,8 @@ void AC_AttitudeControl::attitude_controller_run_quat()
     Quaternion attitude_target_ang_vel_quat = Quaternion(0.0f, _attitude_target_ang_vel.x, _attitude_target_ang_vel.y, _attitude_target_ang_vel.z);
     Quaternion attitude_error_quat = attitude_vehicle_quat.inverse() * _attitude_target_quat;
     Quaternion target_ang_vel_quat = attitude_error_quat.inverse()*attitude_target_ang_vel_quat*attitude_error_quat;
+    // added by MobiuS@2016.08.17 for logging
+    _target_ang_vel_quat_2 = target_ang_vel_quat.q2, _target_ang_vel_quat_3 = target_ang_vel_quat.q3, _target_ang_vel_quat_4 = target_ang_vel_quat.q4; 
 
     // Correct the thrust vector and smoothly add feedforward and yaw input
     if(_thrust_error_angle > AC_ATTITUDE_THRUST_ERROR_ANGLE*2.0f){
@@ -490,6 +496,12 @@ void AC_AttitudeControl::thrust_heading_rotation_angles(Quaternion& att_to_quat,
 
     heading_quat.to_axis_angle(rotation);
     att_diff_angle.z = rotation.z;
+    // Added by MobiuS@2016.08.17 for logging
+	_heading_quat_1 = heading_quat.q1, _heading_quat_2 = heading_quat.q2, _heading_quat_3 = heading_quat.q3, _heading_quat_4 = heading_quat.q4; 
+	_rotation_z = rotation.z;
+	_att_from_quat_1 = att_from_quat.q1, _att_from_quat_2 = att_from_quat.q2, _att_from_quat_3 = att_from_quat.q3, _att_from_quat_4 = att_from_quat.q4;
+	_att_to_quat_1 = att_to_quat.q1, _att_to_quat_2 = att_to_quat.q2, _att_to_quat_3 = att_to_quat.q3, _att_to_quat_4 = att_to_quat.q4;
+
     if(!is_zero(_p_angle_yaw.kP()) && fabsf(att_diff_angle.z) > AC_ATTITUDE_ACCEL_Y_CONTROLLER_MAX_RADSS/_p_angle_yaw.kP()){
         att_diff_angle.z = constrain_float(wrap_PI(att_diff_angle.z), -AC_ATTITUDE_ACCEL_Y_CONTROLLER_MAX_RADSS/_p_angle_yaw.kP(), AC_ATTITUDE_ACCEL_Y_CONTROLLER_MAX_RADSS/_p_angle_yaw.kP());
         heading_quat.from_axis_angle(Vector3f(0.0f,0.0f,att_diff_angle.z));
