@@ -107,6 +107,30 @@ struct PACKED log_IMUDT {
     float delta_vel_x, delta_vel_y, delta_vel_z;
 };
 
+struct PACKED log_ISBH {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    uint16_t seqno;
+    uint8_t sensor_type; // e.g. GYRO or ACCEL
+    uint8_t instance;
+    uint16_t multiplier;
+    uint16_t sample_count;
+    uint64_t sample_us;
+    float sample_rate_hz;
+};
+static_assert(sizeof(log_ISBH) < 256, "log_ISBH is over-size");
+
+struct PACKED log_ISBD {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    uint16_t isb_seqno;
+    uint16_t seqno; // seqno within isb_seqno
+    int16_t x[32];
+    int16_t y[32];
+    int16_t z[32];
+};
+static_assert(sizeof(log_ISBD) < 256, "log_ISBD is over-size");
+
 struct PACKED log_Vibe {
     LOG_PACKET_HEADER;
     uint64_t time_us;
@@ -622,6 +646,7 @@ struct PACKED log_Ubx1 {
     uint8_t  jamInd;
     uint8_t  aPower;
     uint16_t agcCnt;
+    uint32_t config;
 };
 
 struct PACKED log_Ubx2 {
@@ -898,6 +923,24 @@ struct PACKED log_SRTL {
     float D;
 };
 
+struct PACKED log_DSTL {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    uint8_t stage;
+    float target_heading;
+    int32_t target_lat;
+    int32_t target_lng;
+    int32_t target_alt;
+    int16_t crosstrack_error;
+    int16_t travel_distance;
+    float l1_i;
+    int32_t loiter_sum_cd;
+    float desired;
+    float P;
+    float I;
+    float D;
+};
+
 // #endif // SBP_HW_LOGGING
 
 #define ACC_LABELS "TimeUS,SampleUS,AccX,AccY,AccZ"
@@ -923,6 +966,12 @@ struct PACKED log_SRTL {
 #define IMT_LABELS "TimeUS,DelT,DelvT,DelaT,DelAX,DelAY,DelAZ,DelVX,DelVY,DelVZ"
 #define IMT_FMT    "Qfffffffff"
 
+#define ISBH_LABELS "TimeUS,N,type,instance,mul,smp_cnt,SampleUS,smp_rate"
+#define ISBH_FMT    "QHBBHHQf"
+
+#define ISBD_LABELS "TimeUS,N,seqno,x,y,z"
+#define ISBD_FMT    "QHHaaa"
+
 #define IMU_LABELS "TimeUS,GyrX,GyrY,GyrZ,AccX,AccY,AccZ,EG,EA,T,GH,AH,GHz,AHz"
 #define IMU_FMT   "QffffffIIfBBHH"
 
@@ -943,6 +992,7 @@ struct PACKED log_SRTL {
 
 /*
 Format characters in the format string for binary log messages
+  a   : int16_t[32]
   b   : int8_t
   B   : uint8_t
   h   : int16_t
@@ -1096,11 +1146,11 @@ Format characters in the format string for binary log messages
     { LOG_TERRAIN_MSG, sizeof(log_TERRAIN), \
       "TERR","QBLLHffHH","TimeUS,Status,Lat,Lng,Spacing,TerrH,CHeight,Pending,Loaded" }, \
     { LOG_GPS_UBX1_MSG, sizeof(log_Ubx1), \
-      "UBX1", "QBHBBH",  "TimeUS,Instance,noisePerMS,jamInd,aPower,agcCnt" }, \
+      "UBX1", "QBHBBHI",  "TimeUS,Instance,noisePerMS,jamInd,aPower,agcCnt,config" }, \
     { LOG_GPS_UBX2_MSG, sizeof(log_Ubx2), \
       "UBX2", "QBbBbB", "TimeUS,Instance,ofsI,magI,ofsQ,magQ" }, \
     { LOG_GPS2_UBX1_MSG, sizeof(log_Ubx1), \
-      "UBY1", "QBHBBH",  "TimeUS,Instance,noisePerMS,jamInd,aPower,agcCnt" }, \
+      "UBY1", "QBHBBHI",  "TimeUS,Instance,noisePerMS,jamInd,aPower,agcCnt,config" }, \
     { LOG_GPS2_UBX2_MSG, sizeof(log_Ubx2), \
       "UBY2", "QBbBbB", "TimeUS,Instance,ofsI,magI,ofsQ,magQ" }, \
     { LOG_GPS_RAW_MSG, sizeof(log_GPS_RAW), \
@@ -1153,8 +1203,8 @@ Format characters in the format string for binary log messages
       "PIDA", PID_FMT,  PID_LABELS }, \
     { LOG_PIDS_MSG, sizeof(log_PID), \
       "PIDS", PID_FMT,  PID_LABELS }, \
-    { LOG_PIDL_MSG, sizeof(log_PID), \
-      "PIDL", PID_FMT,  PID_LABELS }, \
+    { LOG_DSTL_MSG, sizeof(log_DSTL), \
+      "DSTL", "QBfLLeccfeffff", "TimeUS,Stg,THdg,Lat,Lng,Alt,XT,Travel,L1I,Loiter,Des,P,I,D" }, \
     { LOG_BAR2_MSG, sizeof(log_BARO), \
       "BAR2",  BARO_FMT, BARO_LABELS }, \
     { LOG_BAR3_MSG, sizeof(log_BARO), \
@@ -1167,6 +1217,10 @@ Format characters in the format string for binary log messages
       "IMT2",IMT_FMT,IMT_LABELS }, \
     { LOG_IMUDT3_MSG, sizeof(log_IMUDT), \
       "IMT3",IMT_FMT,IMT_LABELS }, \
+    { LOG_ISBH_MSG, sizeof(log_ISBH), \
+      "ISBH",ISBH_FMT,ISBH_LABELS }, \
+    { LOG_ISBD_MSG, sizeof(log_ISBD), \
+      "ISBD",ISBD_FMT,ISBD_LABELS }, \
     { LOG_ORGN_MSG, sizeof(log_ORGN), \
       "ORGN","QBLLe","TimeUS,Type,Lat,Lng,Alt" }, \
     { LOG_DF_FILE_STATS, sizeof(log_DSF), \
@@ -1264,7 +1318,7 @@ enum LogMessages {
     LOG_PIDY_MSG,
     LOG_PIDA_MSG,
     LOG_PIDS_MSG,
-    LOG_PIDL_MSG,
+    LOG_DSTL_MSG,
     LOG_VIBE_MSG,
     LOG_IMUDT_MSG,
     LOG_IMUDT2_MSG,
@@ -1326,6 +1380,9 @@ enum LogMessages {
     LOG_PROXIMITY_MSG,
     LOG_DF_FILE_STATS,
     LOG_SRTL_MSG,
+    LOG_ISBH_MSG,
+    LOG_ISBD_MSG,
+
 };
 
 enum LogOriginType {

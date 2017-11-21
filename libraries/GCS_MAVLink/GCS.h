@@ -161,8 +161,7 @@ public:
     void send_rangefinder_downward(const RangeFinder &rangefinder) const;
     bool send_proximity(const AP_Proximity &proximity) const;
     void send_ahrs2(AP_AHRS &ahrs);
-    bool send_gps_raw(AP_GPS &gps);
-    void send_system_time(AP_GPS &gps);
+    void send_system_time();
     void send_radio_in(uint8_t receiver_rssi);
     void send_raw_imu(const AP_InertialSensor &ins, const Compass &compass);
     void send_scaled_pressure(AP_Baro &barometer);
@@ -172,7 +171,7 @@ public:
 #if AP_AHRS_NAVEKF_AVAILABLE
     void send_opticalflow(AP_AHRS_NavEKF &ahrs, const OpticalFlow &optflow);
 #endif
-    void send_autopilot_version(uint8_t major_version, uint8_t minor_version, uint8_t patch_version, uint8_t version_type) const;
+    void send_autopilot_version() const;
     void send_local_position(const AP_AHRS &ahrs) const;
     void send_vibration(const AP_InertialSensor &ins) const;
     void send_home(const Location &home) const;
@@ -231,7 +230,6 @@ protected:
     virtual Compass *get_compass() const = 0;
     virtual class AP_Camera *get_camera() const = 0;
     virtual AP_ServoRelayEvents *get_servorelayevents() const = 0;
-    virtual AP_GPS *get_gps() const = 0;
     virtual AP_AdvancedFailsafe *get_advanced_failsafe() const { return nullptr; };
     virtual bool set_mode(uint8_t mode) = 0;
     virtual const AP_FWVersion &get_fwver() const = 0;

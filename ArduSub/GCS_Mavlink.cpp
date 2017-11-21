@@ -1,5 +1,4 @@
 #include "Sub.h"
-#include "version.h"
 
 #include "GCS_Mavlink.h"
 
@@ -164,7 +163,7 @@ NOINLINE void Sub::send_extended_status1(mavlink_channel_t chan)
     if (g.compass_enabled && compass.healthy() && ahrs.use_compass()) {
         control_sensors_health |= MAV_SYS_STATUS_SENSOR_3D_MAG;
     }
-    if (gps.status() > AP_GPS::NO_GPS) {
+    if (gps.is_healthy()) {
         control_sensors_health |= MAV_SYS_STATUS_SENSOR_GPS;
     }
 #if OPTFLOW == ENABLED
@@ -1188,6 +1187,9 @@ void GCS_MAVLINK_Sub::handleMessage(mavlink_message_t* msg)
                 } else {
                     result = MAV_RESULT_FAILED;
                 }
+            } else if (is_equal(packet.param5,4.0f)) {
+                // simple accel calibration
+                result = sub.ins.simple_accel_cal(sub.ahrs);
             } else if (is_equal(packet.param6,1.0f)) {
                 // compassmot calibration
                 //result = sub.mavlink_compassmot(chan);
@@ -1227,12 +1229,12 @@ void GCS_MAVLINK_Sub::handleMessage(mavlink_message_t* msg)
             if (is_equal(packet.param1,1.0f) || is_equal(packet.param1,3.0f)) {
                 // Send an invalid signal to the motors to prevent spinning due to neutral (1500) pwm pulse being cut short
                 // For that matter, send an invalid signal to all channels to prevent undesired/unexpected behavior
-                hal.rcout->cork();
+                SRV_Channels::cork();
                 for (int i=0; i<NUM_RC_CHANNELS; i++) {
                     // Set to 1 because 0 is interpreted as flag to ignore update
                     hal.rcout->write(i, 1);
                 }
-                hal.rcout->push();
+                SRV_Channels::push();
 
                 result = MAV_RESULT_ACCEPTED;
                 // send ack before we reboot
@@ -1624,11 +1626,6 @@ Compass *GCS_MAVLINK_Sub::get_compass() const
 AP_Mission *GCS_MAVLINK_Sub::get_mission()
 {
     return &sub.mission;
-}
-
-AP_GPS *GCS_MAVLINK_Sub::get_gps() const
-{
-    return &sub.gps;
 }
 
 AP_Camera *GCS_MAVLINK_Sub::get_camera() const
