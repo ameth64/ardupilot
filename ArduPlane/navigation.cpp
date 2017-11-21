@@ -52,8 +52,11 @@ void Plane::loiter_angle_update(void)
     loiter.old_target_bearing_cd = target_bearing_cd;
     loiter_delta_cd = wrap_180_cd(loiter_delta_cd);
     loiter.sum_cd += loiter_delta_cd * loiter.direction;
-
-    if (labs(current_loc.alt - next_WP_loc.alt) < 500) {
+    // add the barometer verification for LOITER_TO_ALT wp
+    if ( (labs(current_loc.alt - next_WP_loc.alt) < 500) 
+        || (barometer.all_healthy() 
+            && labs(current_loc.alt - next_WP_loc.alt) < 2000 
+            && labs(barometer.get_altitude()*100 - next_WP_loc.alt) < 500) ) {
         loiter.reached_target_alt = true;
         loiter.unable_to_acheive_target_alt = false;
         loiter.next_sum_lap_cd = loiter.sum_cd + lap_check_interval_cd;
