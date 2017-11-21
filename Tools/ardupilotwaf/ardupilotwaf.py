@@ -62,6 +62,7 @@ COMMON_VEHICLE_DEPENDENT_LIBRARIES = [
     'AP_FlashStorage',
     'AP_Relay',
     'AP_ServoRelayEvents',
+    'AP_Volz_Protocol',
 ]
 
 def get_legacy_defines(sketch_name):
@@ -236,7 +237,15 @@ def ap_version_append_str(ctx, k, v):
 @conf
 def write_version_header(ctx, tgt):
     with open(tgt, 'w') as f:
-        print('#pragma once\n', file=f)
+        print(
+'''// auto-generated header, do not edit
+
+#pragma once
+
+#ifndef FORCE_VERSION_H_INCLUDE
+#error ap_version.h should never be included directly. You probably want to include AP_Common/AP_FWVersion.h
+#endif
+''', file=f)
 
         for k, v in ctx.env['AP_VERSION_ITEMS']:
             print('#define {} {}'.format(k, v), file=f)

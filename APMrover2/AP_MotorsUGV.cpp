@@ -21,7 +21,7 @@ extern const AP_HAL::HAL& hal;
 // parameters for the motor class
 const AP_Param::GroupInfo AP_MotorsUGV::var_info[] = {
     // @Param: PWM_TYPE
-    // @DisplayName: Output PWM type
+    // @DisplayName: Motor Output PWM type
     // @Description: This selects the output PWM type as regular PWM, OneShot, Brushed motor support using PWM (duty cycle) with separated direction signal, Brushed motor support with separate throttle and direction PWM (duty cyle)
     // @Values: 0:Normal,1:OneShot,2:OneShot125,3:BrushedWithRelay,4:BrushedBiPolar
     // @User: Advanced
@@ -29,8 +29,8 @@ const AP_Param::GroupInfo AP_MotorsUGV::var_info[] = {
     AP_GROUPINFO("PWM_TYPE", 1, AP_MotorsUGV, _pwm_type, PWM_TYPE_NORMAL),
 
     // @Param: PWM_FREQ
-    // @DisplayName: Output PWM freq for brushed motors
-    // @Description: Output PWM freq for brushed motors
+    // @DisplayName: Motor Output PWM freq for brushed motors
+    // @Description: Motor Output PWM freq for brushed motors
     // @Units: kHz
     // @Range: 1 20
     // @Increment: 1
@@ -45,7 +45,7 @@ const AP_Param::GroupInfo AP_MotorsUGV::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("SAFE_DISARM", 3, AP_MotorsUGV, _disarm_disable_pwm, 0),
 
-    // @Param: THR_SLEWRATE
+    // @Param: SLEWRATE
     // @DisplayName: Throttle slew rate
     // @Description: maximum percentage change in throttle per second. A setting of 10 means to not change the throttle by more than 10% of the full throttle range in one second. A value of zero means no limit. A value of 100 means the throttle can change over its full range in one second. Note that for some NiMH powered rovers setting a lower value like 40 or 50 may be worthwhile as the sudden current demand on the battery of a big rise in throttle may cause a brownout.
     // @Units: %/s
@@ -71,6 +71,15 @@ const AP_Param::GroupInfo AP_MotorsUGV::var_info[] = {
     // @Increment: 1
     // @User: Standard
     AP_GROUPINFO("THR_MAX", 6, AP_MotorsUGV, _throttle_max, 100),
+
+    // @Param: SKID_FRIC
+    // @DisplayName: Motor skid steering friction compensation
+    // @Description: Motor output for skid steering vehicles will be increased by this percentage to overcome friction when stopped
+    // @Units: %
+    // @Range: 0 100
+    // @Increment: 1
+    // @User: Standard
+    AP_GROUPINFO("SKID_FRIC", 7, AP_MotorsUGV, _skid_friction, 0.0f),
 
     AP_GROUPEND
 };
@@ -191,9 +200,9 @@ void AP_MotorsUGV::output(bool armed, float dt)
 
     // send values to the PWM timers for output
     SRV_Channels::calc_pwm();
-    hal.rcout->cork();
+    SRV_Channels::cork();
     SRV_Channels::output_ch_all();
-    hal.rcout->push();
+    SRV_Channels::push();
     _last_throttle = _throttle;
 }
 
@@ -268,9 +277,10 @@ void AP_MotorsUGV::output_skid_steering(bool armed, float steering, float thrott
 
     // deal with case of turning on the spot
     if (is_zero(throttle_scaled)) {
-        // full possible range is not used to keep response equivalent to non-zero throttle case
-        motor_left += steering_scaled * 0.5f;
-        motor_right -= steering_scaled * 0.5f;
+        // steering output split evenly between left and right motors and compensated for friction
+        const float friction_comp = MAX(0.0f, 1.0f + (_skid_friction * 0.01f));
+        motor_left += steering_scaled * 0.5f * friction_comp;
+        motor_right -= steering_scaled * 0.5f * friction_comp;
     } else {
         // add in steering
         const float dir = is_positive(throttle_scaled) ? 1.0f : -1.0f;
@@ -344,7 +354,7 @@ void AP_MotorsUGV::output_throttle(SRV_Channel::Aux_servo_function_t function, f
 void AP_MotorsUGV::slew_limit_throttle(float dt)
 {
     if (_use_slew_rate && (_slew_rate > 0)) {
-        float temp = _slew_rate * dt * 0.01f * 100.0f;  // TODO : get THROTTLE MIN and THROTTLE MAX
+        float temp = _slew_rate * dt * 0.01f * (_throttle_max - _throttle_min);
         if (temp < 1.0f) {
             temp = 1.0f;
         }
@@ -432,9 +442,9 @@ bool AP_MotorsUGV::output_test_pct(motor_test_order motor_seq, float pct)
             return false;
     }
     SRV_Channels::calc_pwm();
-    hal.rcout->cork();
+    SRV_Channels::cork();
     SRV_Channels::output_ch_all();
-    hal.rcout->push();
+    SRV_Channels::push();
     return true;
 }
 
@@ -478,8 +488,8 @@ bool AP_MotorsUGV::output_test_pwm(motor_test_order motor_seq, float pwm)
             return false;
     }
     SRV_Channels::calc_pwm();
-    hal.rcout->cork();
+    SRV_Channels::cork();
     SRV_Channels::output_ch_all();
-    hal.rcout->push();
+    SRV_Channels::push();
     return true;
 }
