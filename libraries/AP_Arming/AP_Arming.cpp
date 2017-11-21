@@ -23,7 +23,6 @@
 #define AP_ARMING_BOARD_VOLTAGE_MIN     4.3f
 #define AP_ARMING_BOARD_VOLTAGE_MAX     5.8f
 #define AP_ARMING_ACCEL_ERROR_THRESHOLD 0.75f
-#define AP_ARMING_AHRS_GPS_ERROR_MAX    10      // accept up to 10m difference between AHRS and GPS
 
 extern const AP_HAL::HAL& hal;
 
@@ -56,7 +55,7 @@ const AP_Param::GroupInfo AP_Arming::var_info[] = {
 
     // @Param: VOLT_MIN
     // @DisplayName: Arming voltage minimum on the first battery
-    // @Description: The minimum voltage of the first battery required to arm, 0 disables the check
+    // @Description: The minimum voltage on the first battery to arm, 0 disables the check
     // @Units: V
     // @Increment: 0.1 
     // @User: Standard
@@ -64,7 +63,7 @@ const AP_Param::GroupInfo AP_Arming::var_info[] = {
 
     // @Param: VOLT2_MIN
     // @DisplayName: Arming voltage minimum on the second battery
-    // @Description: The minimum voltage of the second battery required to arm, 0 disables the check
+    // @Description: The minimum voltage on the first battery to arm, 0 disables the check
     // @Units: V
     // @Increment: 0.1 
     // @User: Standard
@@ -339,7 +338,7 @@ bool AP_Arming::compass_checks(bool report)
 
 bool AP_Arming::gps_checks(bool report)
 {
-    const AP_GPS &gps = AP::gps();
+    const AP_GPS &gps = ahrs.get_gps();
     if ((checks_to_perform & ARMING_CHECK_ALL) || (checks_to_perform & ARMING_CHECK_GPS)) {
 
         //GPS OK?
@@ -350,16 +349,23 @@ bool AP_Arming::gps_checks(bool report)
             }
             return false;
         }
+    }
 
-        //GPS update rate acceptable
-        if (!gps.is_healthy()) {
+    if ((checks_to_perform & ARMING_CHECK_ALL) || (checks_to_perform & ARMING_CHECK_GPS_CONFIG)) {
+        uint8_t first_unconfigured = gps.first_unconfigured_gps();
+        if (first_unconfigured != AP_GPS::GPS_ALL_CONFIGURED) {
             if (report) {
-                gcs().send_text(MAV_SEVERITY_CRITICAL, "PreArm: GPS is not healthy");
+                gcs().send_text(MAV_SEVERITY_CRITICAL,
+                                                 "PreArm: GPS %d failing configuration checks",
+                                                  first_unconfigured + 1);
+                gps.broadcast_first_configuration_failure_reason();
             }
             return false;
         }
+    }
 
-        // check GPSs are within 50m of each other and that blending is healthy
+    // check GPSs are within 50m of each other and that blending is healthy
+    if ((checks_to_perform & ARMING_CHECK_ALL) || (checks_to_perform & ARMING_CHECK_GPS)) {
         float distance_m;
         if (!gps.all_consistent(distance_m)) {
             if (report) {
@@ -372,32 +378,6 @@ bool AP_Arming::gps_checks(bool report)
         if (!gps.blend_health_check()) {
             if (report) {
                 gcs().send_text(MAV_SEVERITY_CRITICAL, "PreArm: GPS blending unhealthy");
-            }
-            return false;
-        }
-
-        // check AHRS and GPS are within 10m of each other
-        Location gps_loc = gps.location();
-        Location ahrs_loc;
-        if (ahrs.get_position(ahrs_loc)) {
-            float distance = location_3d_diff_NED(gps_loc, ahrs_loc).length();
-            if (distance > AP_ARMING_AHRS_GPS_ERROR_MAX) {
-                if (report) {
-                    gcs().send_text(MAV_SEVERITY_CRITICAL, "PreArm: GPS and AHRS differ by %4.1fm", (double)distance);
-                }
-                return false;
-            }
-        }
-    }
-
-    if ((checks_to_perform & ARMING_CHECK_ALL) || (checks_to_perform & ARMING_CHECK_GPS_CONFIG)) {
-        uint8_t first_unconfigured = gps.first_unconfigured_gps();
-        if (first_unconfigured != AP_GPS::GPS_ALL_CONFIGURED) {
-            if (report) {
-                gcs().send_text(MAV_SEVERITY_CRITICAL,
-                                                 "PreArm: GPS %d failing configuration checks",
-                                                  first_unconfigured + 1);
-                gps.broadcast_first_configuration_failure_reason();
             }
             return false;
         }
@@ -450,11 +430,6 @@ bool AP_Arming::hardware_safety_check(bool report)
     return true;
 }
 
-bool AP_Arming::rc_calibration_checks(bool report)
-{
-    return true;
-}
-
 bool AP_Arming::manual_transmitter_checks(bool report)
 {
     if ((checks_to_perform & ARMING_CHECK_ALL) ||
@@ -467,9 +442,9 @@ bool AP_Arming::manual_transmitter_checks(bool report)
             return false;
         }
 
-        if (!rc_calibration_checks(report)) {
-            return false;
-        }
+        //TODO verify radio calibration
+        //Requires access to Parameters ... which are implemented a little
+        //differently for Rover, Plane, and Copter.
     }
 
     return true;
@@ -514,14 +489,6 @@ bool AP_Arming::pre_arm_checks(bool report)
 
 bool AP_Arming::arm_checks(uint8_t method)
 {
-    // ensure the GPS drivers are ready on any final changes
-    if ((checks_to_perform & ARMING_CHECK_ALL) ||
-        (checks_to_perform & ARMING_CHECK_GPS_CONFIG)) {
-        if (!AP::gps().prepare_for_arming()) {
-            return false;
-        }
-    }
-
     // note that this will prepare DataFlash to start logging
     // so should be the last check to be done before arming
     if ((checks_to_perform & ARMING_CHECK_ALL) ||
@@ -597,64 +564,4 @@ bool AP_Arming::disarm()
 AP_Arming::ArmingRequired AP_Arming::arming_required() 
 {
     return (AP_Arming::ArmingRequired)require.get();
-}
-
-// Copter and sub share the same RC input limits
-// Copter checks that min and max have been configured by default, Sub does not
-bool AP_Arming::rc_checks_copter_sub(const bool display_failure, const RC_Channel *channels[4], const bool check_min_max) const
-{
-    // set rc-checks to success if RC checks are disabled
-    if ((checks_to_perform != ARMING_CHECK_ALL) && !(checks_to_perform & ARMING_CHECK_RC)) {
-        return true;
-    }
-
-    bool ret = true;
-
-    const char *channel_names[] = { "Roll", "Pitch", "Throttle", "Yaw" };
-
-    for (uint8_t i=0; i<ARRAY_SIZE(channel_names);i++) {
-        const RC_Channel *channel = channels[i];
-        const char *channel_name = channel_names[i];
-        // check if radio has been calibrated
-        if (check_min_max && !channel->min_max_configured()) {
-            if (display_failure) {
-                gcs().send_text(MAV_SEVERITY_CRITICAL,"PreArm: RC %s not configured", channel_name);
-            }
-            ret = false;
-        }
-        if (channel->get_radio_min() > 1300) {
-            if (display_failure) {
-                gcs().send_text(MAV_SEVERITY_CRITICAL,"PreArm: %s radio min too high", channel_name);
-            }
-            ret = false;
-        }
-        if (channel->get_radio_max() < 1700) {
-            if (display_failure) {
-                gcs().send_text(MAV_SEVERITY_CRITICAL,"PreArm: %s radio max too low", channel_name);
-            }
-            ret = false;
-        }
-        bool fail = true;
-        if (i == 2) {
-            // skip checking trim for throttle as older code did not check it
-            fail = false;
-        }
-        if (channel->get_radio_trim() < channel->get_radio_min()) {
-            if (display_failure) {
-                gcs().send_text(MAV_SEVERITY_CRITICAL,"PreArm: %s radio trim below min", channel_name);
-            }
-            if (fail) {
-                ret = false;
-            }
-        }
-        if (channel->get_radio_trim() > channel->get_radio_max()) {
-            if (display_failure) {
-                gcs().send_text(MAV_SEVERITY_CRITICAL,"PreArm: %s radio trim above max", channel_name);
-            }
-            if (fail) {
-                ret = false;
-            }
-        }
-    }
-    return ret;
 }

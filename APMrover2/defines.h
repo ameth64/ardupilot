@@ -3,6 +3,9 @@
 // Internal defines, don't edit and expect things to work
 // -------------------------------------------------------
 
+#define TRUE  1
+#define FALSE 0
+
 // Just so that it's completely clear...
 #define ENABLED  1
 #define DISABLED 0
@@ -11,13 +14,13 @@
 #define ENABLE ENABLED
 #define DISABLE DISABLED
 
+#define DEBUG 0
 #define SERVO_MAX 4500  // This value represents 45 degrees and is just an arbitrary representation of servo max travel.
 
 // CH 7 control
 enum ch7_option {
-    CH7_DO_NOTHING      = 0,
-    CH7_SAVE_WP         = 1,
-    CH7_LEARN_CRUISE    = 2
+    CH7_DO_NOTHING = 0,
+    CH7_SAVE_WP    = 1
 };
 
 // HIL enumerations
@@ -28,6 +31,7 @@ enum ch7_option {
 // ----------------
 enum mode {
     MANUAL       = 0,
+    LEARNING     = 2,
     STEERING     = 3,
     HOLD         = 4,
     AUTO         = 10,
@@ -55,6 +59,7 @@ enum mode {
 
 #define TYPE_AIRSTART_MSG       0x00
 #define TYPE_GROUNDSTART_MSG    0x01
+#define MAX_NUM_LOGS            100
 
 #define MASK_LOG_ATTITUDE_FAST  (1<<0)
 #define MASK_LOG_ATTITUDE_MED   (1<<1)
@@ -62,7 +67,7 @@ enum mode {
 #define MASK_LOG_PM             (1<<3)
 #define MASK_LOG_CTUN           (1<<4)
 #define MASK_LOG_NTUN           (1<<5)
-//#define MASK_LOG_MODE         (1<<6) // no longer used
+#define MASK_LOG_MODE           (1<<6)
 #define MASK_LOG_IMU            (1<<7)
 #define MASK_LOG_CMD            (1<<8)
 #define MASK_LOG_CURRENT        (1<<9)
@@ -113,13 +118,3 @@ enum mode_reason_t {
     MODE_REASON_CRASH_FAILSAFE,
     MODE_REASON_MISSION_COMMAND
 };
-
-// values used by the ap.ch7_opt and ap.ch8_opt flags
-enum aux_switch_pos {
-    AUX_SWITCH_LOW,
-    AUX_SWITCH_MIDDLE,
-    AUX_SWITCH_HIGH
-};
-
-#define AUX_SWITCH_PWM_TRIGGER_HIGH 1800   // pwm value above which the ch7 or ch8 option will be invoked
-#define AUX_SWITCH_PWM_TRIGGER_LOW  1200   // pwm value below which the ch7 or ch8 option will be disabled

@@ -146,7 +146,7 @@ const AP_Param::GroupInfo QuadPlane::var_info[] = {
     // @Param: THR_MIN_PWM
     // @DisplayName: Minimum PWM output
     // @Description: This is the minimum PWM output for the quad motors
-    // @Units: PWM
+    // @Units: Hz
     // @Range: 800 2200
     // @Increment: 1
     // @User: Standard
@@ -155,7 +155,7 @@ const AP_Param::GroupInfo QuadPlane::var_info[] = {
     // @Param: THR_MAX_PWM
     // @DisplayName: Maximum PWM output
     // @Description: This is the maximum PWM output for the quad motors
-    // @Units: PWM
+    // @Units: Hz
     // @Range: 800 2200
     // @Increment: 1
     // @User: Standard
@@ -402,7 +402,7 @@ const AP_Param::GroupInfo QuadPlane::var_info[] = {
 
     // @Param: OPTIONS
     // @DisplayName: quadplane options
-    // @Description: This provides a set of additional control options for quadplanes. LevelTransition means that the wings should be held level to within LEVEL_ROLL_LIMIT degrees during transition to fixed wing flight. If AllowFWTakeoff bit is not set then fixed wing takeoff on quadplanes will instead perform a VTOL takeoff. If AllowFWLand bit is not set then fixed wing land on quadplanes will instead perform a VTOL land.
+    // @Description: This provides a set of additional control options for quadplanes. LevelTransition means that the wings should be held level to within LEVEL_ROLL_LIMIT degrees during transition to fixed wing flight. If AllowFWTakeoff is disabled then fixed wing takeoff on quadplanes will instead perform a VTOL takeoff. If AllowFWLand is disabled then fixed wing land on quadplanes will instead perform a VTOL land.
     // @Bitmask: 0:LevelTransition,1:AllowFWTakeoff,2:AllowFWLand
     AP_GROUPINFO("OPTIONS", 58, QuadPlane, options, 0),
 
@@ -471,7 +471,7 @@ QuadPlane::QuadPlane(AP_AHRS_NavEKF &_ahrs) :
 void QuadPlane::setup_default_channels(uint8_t num_motors)
 {
     for (uint8_t i=0; i<num_motors; i++) {
-        SRV_Channels::set_aux_channel_default(SRV_Channels::get_motor_function(i), CH_5+i);
+        SRV_Channels::set_aux_channel_default((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_motor1+i), CH_5+i);
     }
 }
     
@@ -620,7 +620,7 @@ bool QuadPlane::setup(void)
     // setup the trim of any motors used by AP_Motors so px4io
     // failsafe will disable motors
     for (uint8_t i=0; i<8; i++) {
-        SRV_Channel::Aux_servo_function_t func = SRV_Channels::get_motor_function(i);
+        SRV_Channel::Aux_servo_function_t func = (SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_motor1+i);
         SRV_Channels::set_failsafe_pwm(func, thr_min_pwm);
     }
 
@@ -778,7 +778,7 @@ void QuadPlane::run_z_controller(void)
     if (now - last_pidz_active_ms > 2000) {
         // set alt target to current height on transition. This
         // starts the Z controller off with the right values
-        gcs().send_text(MAV_SEVERITY_INFO, "Reset alt target to %.1f", (double)inertial_nav.get_altitude() / 100);
+        gcs().send_text(MAV_SEVERITY_INFO, "Reset alt target to %.1f", (double)inertial_nav.get_altitude());
         set_alt_target_current();
         pos_control->set_desired_velocity_z(inertial_nav.get_velocity_z());
 
@@ -1096,7 +1096,7 @@ float QuadPlane::get_desired_yaw_rate_cds(void)
 // get pilot desired climb rate in cm/s
 float QuadPlane::get_pilot_desired_climb_rate_cms(void)
 {
-    if (plane.failsafe.rc_failsafe || plane.failsafe.throttle_counter > 0) {
+    if (plane.failsafe.ch3_failsafe || plane.failsafe.ch3_counter > 0) {
         // descend at 0.5m/s for now
         return -50;
     }
@@ -1126,6 +1126,9 @@ void QuadPlane::set_armed(bool armed)
         return;
     }
     motors->armed(armed);
+    if (armed) {
+        motors->enable();
+    }
 }
 
 
@@ -1140,19 +1143,15 @@ float QuadPlane::assist_climb_rate_cms(void)
         climb_rate = plane.altitude_error_cm / 10.0f;
     } else {
         // otherwise estimate from pilot input
-        //climb_rate = plane.g.flybywire_climb_rate * (plane.nav_pitch_cd/(float)plane.aparm.pitch_limit_max_cd);
-        //climb_rate *= plane.channel_throttle->get_control_in();
-        // added by MobiuS@2016.09.18 to control altitude in transition
-        _current_altitude_cm = plane.adjusted_altitude_cm();
-        climb_rate = (float)(_trans_altitude_cm - _current_altitude_cm)* 0.5f 
-                     + 0.25f * plane.channel_throttle->get_control_in() * (plane.g.flybywire_climb_rate);
+        climb_rate = plane.g.flybywire_climb_rate * (plane.nav_pitch_cd/(float)plane.aparm.pitch_limit_max_cd);
+        climb_rate *= plane.channel_throttle->get_control_in();
     }
     climb_rate = constrain_float(climb_rate, -wp_nav->get_speed_down(), wp_nav->get_speed_up());
 
-    // bring in the demanded climb rate over 1 seconds
+    // bring in the demanded climb rate over 2 seconds
     uint16_t dt_since_start = last_pidz_active_ms - last_pidz_init_ms;
-    if (dt_since_start < 1000) {
-        climb_rate = linear_interpolate(0, climb_rate, dt_since_start, 0, 1000);
+    if (dt_since_start < 2000) {
+        climb_rate = linear_interpolate(0, climb_rate, dt_since_start, 0, 2000);
     }
     
     return climb_rate;
@@ -1253,11 +1252,6 @@ void QuadPlane::update_transition(void)
 
     float aspeed;
     bool have_airspeed = ahrs.airspeed_estimate(&aspeed);
-
-    // tailsitters use angle wait, not airspeed wait
-    if (is_tailsitter() && transition_state == TRANSITION_AIRSPEED_WAIT) {
-        transition_state = TRANSITION_ANGLE_WAIT_FW;
-    }
     
     /*
       see if we should provide some assistance
@@ -1275,7 +1269,6 @@ void QuadPlane::update_transition(void)
         }
         transition_state = TRANSITION_AIRSPEED_WAIT;
         transition_start_ms = millis();
-        _trans_altitude_cm = plane.adjusted_altitude_cm();
         assisted_flight = true;
     } else {
         assisted_flight = false;
@@ -1319,7 +1312,6 @@ void QuadPlane::update_transition(void)
         if (transition_start_ms == 0) {
             gcs().send_text(MAV_SEVERITY_INFO, "Transition airspeed wait");
             transition_start_ms = millis();
-            _trans_altitude_cm = plane.adjusted_altitude_cm();
         }
 
         if (have_airspeed && aspeed > plane.aparm.airspeed_min && !assisted_flight) {
@@ -1509,8 +1501,8 @@ void QuadPlane::update(void)
     // disable throttle_wait when throttle rises above 10%
     if (throttle_wait &&
         (plane.channel_throttle->get_control_in() > 10 ||
-         plane.failsafe.rc_failsafe ||
-         plane.failsafe.throttle_counter>0)) {
+         plane.failsafe.ch3_failsafe ||
+         plane.failsafe.ch3_counter>0)) {
         throttle_wait = false;
     }
 
@@ -1640,11 +1632,9 @@ void QuadPlane::control_run(void)
         break;
     }
     // we also stabilize using fixed wing surfaces
-    if (!is_tailsitter()){
-        float speed_scaler = plane.get_speed_scaler();
-        plane.stabilize_roll(speed_scaler);
-        plane.stabilize_pitch(speed_scaler);
-    }    
+    float speed_scaler = plane.get_speed_scaler();
+    plane.stabilize_roll(speed_scaler);
+    plane.stabilize_pitch(speed_scaler);
 }
 
 /*
@@ -2212,7 +2202,7 @@ bool QuadPlane::verify_vtol_takeoff(const AP_Mission::Mission_Command &cmd)
     if (plane.current_loc.alt < plane.next_WP_loc.alt) {
         return false;
     }
-    transition_state = is_tailsitter() ? TRANSITION_ANGLE_WAIT_FW : TRANSITION_AIRSPEED_WAIT;
+    transition_state = TRANSITION_AIRSPEED_WAIT;
     plane.TECS_controller.set_pitch_max_limit(transition_pitch_max);
     set_alt_target_current();
 
@@ -2548,7 +2538,7 @@ bool QuadPlane::do_user_takeoff(float takeoff_altitude)
     motors->set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
     guided_start();
     guided_takeoff = true;
-    return true;
+    return false;
 }
 
 /*

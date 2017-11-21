@@ -21,7 +21,6 @@ const AP_Param::Info Plane::var_info[] = {
     // @Param: SYSID_SW_TYPE
     // @DisplayName: Software Type
     // @Description: This is used by the ground station to recognise the software type (eg ArduPlane vs ArduCopter)
-    // @Values: 0:ArduPlane,4:AntennaTracker,10:Copter,20:Rover,40:ArduSub
     // @User: Advanced
     // @ReadOnly: True
     GSCALAR(software_type,          "SYSID_SW_TYPE",  Parameters::k_software_type),
@@ -39,6 +38,15 @@ const AP_Param::Info Plane::var_info[] = {
     // @Range: 1 255
     // @User: Advanced
     GSCALAR(sysid_my_gcs,           "SYSID_MYGCS",    255),
+
+#if CLI_ENABLED == ENABLED
+    // @Param: CLI_ENABLED
+    // @DisplayName: CLI Enable
+    // @Description: This enables/disables the checking for three carriage returns on telemetry links on startup to enter the diagnostics command line interface
+    // @Values: 0:Disabled,1:Enabled
+    // @User: Advanced
+    GSCALAR(cli_enabled,            "CLI_ENABLED",    0),
+#endif
 
     // @Group: SERIAL
     // @Path: ../libraries/AP_SerialManager/AP_SerialManager.cpp
@@ -222,8 +230,7 @@ const AP_Param::Info Plane::var_info[] = {
 
     // @Param: USE_REV_THRUST
     // @DisplayName: Bitmask for when to allow negative reverse thrust
-    // @Description: This controls when to use reverse thrust. If set to zero then reverse thrust is never used. If set to a non-zero value then the bits correspond to flight stages where reverse thrust may be used. Note that reverse thrust is only ever auto-enabled in auto-throttle modes. In modes where throttle control is pilot controlled the ability to do reverse thrust is controlled by throttle stick input. The most commonly used value for USE_REV_THRUST is 2, which means AUTO_LAND only. That enables reverse thrust in the landing stage of AUTO mode. Another common choice is 1, which means to use reverse thrust in all auto flight stages.
-    // @Values: 0:Never,1:AutoAlways,2:AutoLanding
+    // @Description: Typically THR_MIN will be clipped to zero unless reverse thrust is available. Since you may not want negative thrust available at all times this bitmask allows THR_MIN to go below 0 while executing certain auto-mission commands.
     // @Bitmask: 0:AUTO_ALWAYS,1:AUTO_LAND,2:AUTO_LOITER_TO_ALT,3:AUTO_LOITER_ALL,4:AUTO_WAYPOINTS,5:LOITER,6:RTL,7:CIRCLE,8:CRUISE,9:FBWB,10:GUIDED
     // @User: Advanced
     GSCALAR(use_reverse_thrust,     "USE_REV_THRUST",  USE_REVERSE_THRUST_AUTO_LAND_APPROACH),
@@ -436,7 +443,7 @@ const AP_Param::Info Plane::var_info[] = {
 
     // @Param: THR_SLEWRATE
     // @DisplayName: Throttle slew rate
-    // @Description: maximum percentage change in throttle per second. A setting of 10 means to not change the throttle by more than 10% of the full throttle range in one second. Note that the minimum throttle change is 1 microsecond per loop, which provides a lower limit on the throttle slew rate, especially for quadplanes that run at 300 loops per second by default.
+    // @Description: maximum percentage change in throttle per second. A setting of 10 means to not change the throttle by more than 10% of the full throttle range in one second.
     // @Units: %/s
     // @Range: 0 127
     // @Increment: 1
@@ -1177,15 +1184,6 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("MANUAL_RCMASK", 10, ParametersG2, manual_rc_mask, 0),
     
-    // @Param: HOME_RESET_ALT
-    // @DisplayName: Home reset altitude threshold
-    // @Description: When the aircraft is within this altitude of the home waypoint, while disarmed it will automatically update the home position. Set to 0 to continously reset it.
-    // @Values: -1:Never reset,0:Always reset
-    // @Range: -1 127
-    // @Units: m
-    // @User: Advanced
-    AP_GROUPINFO("HOME_RESET_ALT", 11, ParametersG2, home_reset_threshold, 0),
-
     AP_GROUPEND
 };
 
@@ -1268,19 +1266,19 @@ const AP_Param::ConversionInfo conversion_table[] = {
 void Plane::load_parameters(void)
 {
     if (!AP_Param::check_var_info()) {
-        hal.console->printf("Bad parameter table\n");
+        cliSerial->printf("Bad parameter table\n");
         AP_HAL::panic("Bad parameter table");
     }
     if (!g.format_version.load() ||
         g.format_version != Parameters::k_format_version) {
 
         // erase all parameters
-        hal.console->printf("Firmware change: erasing EEPROM...\n");
+        cliSerial->printf("Firmware change: erasing EEPROM...\n");
         AP_Param::erase_all();
 
         // save the current format version
         g.format_version.set_and_save(Parameters::k_format_version);
-        hal.console->printf("done.\n");
+        cliSerial->printf("done.\n");
     }
 
     uint32_t before = micros();
@@ -1314,7 +1312,7 @@ void Plane::load_parameters(void)
 
     AP_Param::set_frame_type_flags(AP_PARAM_FRAME_PLANE);
 
-    hal.console->printf("load_all took %uus\n", (unsigned)(micros() - before));
+    cliSerial->printf("load_all took %uus\n", (unsigned)(micros() - before));
 }
 
 /*
@@ -1347,7 +1345,7 @@ void Plane::convert_mixers(void)
         chan4->get_function() == SRV_Channel::k_rudder &&
         !chan2->function_configured() &&
         !chan4->function_configured()) {
-        hal.console->printf("Converting vtail_output %u\n", vtail_output.get());
+        cliSerial->printf("Converting vtail_output %u\n", vtail_output.get());
         switch (vtail_output) {
         case MIXING_UPUP:
         case MIXING_UPUP_SWP:
@@ -1383,7 +1381,7 @@ void Plane::convert_mixers(void)
         chan2->get_function() == SRV_Channel::k_elevator &&
         !chan1->function_configured() &&
         !chan2->function_configured()) {
-        hal.console->printf("convert elevon_output %u\n", elevon_output.get());
+        cliSerial->printf("convert elevon_output %u\n", elevon_output.get());
         switch (elevon_output) {
         case MIXING_UPUP:
         case MIXING_UPUP_SWP:

@@ -179,9 +179,6 @@ bool Copter::init_arm_motors(bool arming_from_gcs)
     }
     calc_distance_and_bearing();
 
-    // Reset SmartRTL return location. If activated, SmartRTL will ultimately try to land at this point
-    g2.smart_rtl.reset_path(position_ok());
-
     // enable gps velocity based centrefugal force compensation
     ahrs.set_correct_centrifugal(true);
     hal.util->set_soft_armed(true);
@@ -207,7 +204,7 @@ bool Copter::init_arm_motors(bool arming_from_gcs)
     failsafe_enable();
 
     // perf monitor ignores delay due to arming
-    perf_info.ignore_this_loop();
+    perf_ignore_this_loop();
 
     // flag exiting this function
     in_arm_motors = false;
@@ -293,7 +290,7 @@ void Copter::motors_output()
     SRV_Channels::calc_pwm();
 
     // cork now, so that all channel outputs happen at once
-    SRV_Channels::cork();
+    hal.rcout->cork();
 
     // update output on any aux channels, for manual passthru
     SRV_Channels::output_ch_all();
@@ -316,7 +313,7 @@ void Copter::motors_output()
     }
 
     // push all channels
-    SRV_Channels::push();
+    hal.rcout->push();
 }
 
 // check for pilot stick input to trigger lost vehicle alarm

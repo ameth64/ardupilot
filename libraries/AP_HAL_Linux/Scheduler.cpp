@@ -337,6 +337,11 @@ bool Scheduler::in_main_thread() const
     return pthread_equal(pthread_self(), _main_ctx);
 }
 
+bool Scheduler::in_main_thread() const
+{
+    return pthread_equal(pthread_self(), _main_ctx);
+}
+
 void Scheduler::_wait_all_threads()
 {
     int r = pthread_barrier_wait(&_initialized_barrier);

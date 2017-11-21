@@ -55,15 +55,16 @@ const AP_Scheduler::Task Rover::scheduler_tasks[] = {
     SCHED_TASK(update_beacon,          50,     50),
     SCHED_TASK(update_visual_odom,     50,     50),
     SCHED_TASK(update_wheel_encoder,   20,     50),
+    SCHED_TASK(navigate,               10,   1600),
     SCHED_TASK(update_compass,         10,   2000),
-    SCHED_TASK(update_mission,         10,   1000),
+    SCHED_TASK(update_commands,        10,   1000),
     SCHED_TASK(update_logging1,        10,   1000),
     SCHED_TASK(update_logging2,        10,   1000),
     SCHED_TASK(gcs_retry_deferred,     50,   1000),
     SCHED_TASK(gcs_update,             50,   1700),
     SCHED_TASK(gcs_data_stream_send,   50,   3000),
     SCHED_TASK(read_control_switch,     7,   1000),
-    SCHED_TASK(read_aux_switch,        10,    100),
+    SCHED_TASK(read_trim_switch,       10,   1000),
     SCHED_TASK(read_battery,           10,   1000),
     SCHED_TASK(read_receiver_rssi,     10,   1000),
     SCHED_TASK(update_events,          50,   1000),
@@ -77,11 +78,9 @@ const AP_Scheduler::Task Rover::scheduler_tasks[] = {
     SCHED_TASK(compass_cal_update,     50,    100),
     SCHED_TASK(accel_cal_update,       10,    100),
     SCHED_TASK(dataflash_periodic,     50,    300),
-    SCHED_TASK(ins_periodic,           50,     50),
     SCHED_TASK(button_update,           5,    100),
     SCHED_TASK(stats_update,            1,    100),
     SCHED_TASK(crash_check,            10,   1000),
-    SCHED_TASK(cruise_learn_update,    50,     50),
 #if ADVANCED_FAILSAFE == ENABLED
     SCHED_TASK(afs_fs_check,           10,    100),
 #endif
@@ -101,8 +100,12 @@ void Rover::stats_update(void)
  */
 void Rover::setup()
 {
+    cliSerial = hal.console;
+
     // load the default values of variables listed in var_info[]
     AP_Param::setup_sketch_defaults();
+
+    in_auto_reverse = false;
 
     init_ardupilot();
 
@@ -177,8 +180,6 @@ void Rover::ahrs_update()
     Vector3f velocity;
     if (ahrs.get_velocity_NED(velocity)) {
         ground_speed = norm(velocity.x, velocity.y);
-    } else if (gps.status() >= AP_GPS::GPS_OK_FIX_3D) {
-        ground_speed = ahrs.groundspeed();
     }
 
     if (should_log(MASK_LOG_ATTITUDE_FAST)) {
@@ -364,11 +365,6 @@ void Rover::dataflash_periodic(void)
     DataFlash.periodic_tasks();
 }
 
-void Rover::ins_periodic()
-{
-    ins.periodic();
-}
-
 void Rover::update_GPS_50Hz(void)
 {
     static uint32_t last_gps_reading[GPS_MAX_INSTANCES];
@@ -394,15 +390,27 @@ void Rover::update_GPS_10Hz(void)
 
         // set system time if necessary
         set_system_time_from_GPS();
+
+        if (gps.status() >= AP_GPS::GPS_OK_FIX_3D) {
+
+            // get ground speed estimate from AHRS
+            ground_speed = ahrs.groundspeed();
+
 #if CAMERA == ENABLED
-        camera.update();
+            camera.update();
 #endif
+        }
     }
 }
 
 void Rover::update_current_mode(void)
 {
     control_mode->update();
+}
+
+void Rover::update_navigation()
+{
+    control_mode->update_navigation();
 }
 
 AP_HAL_MAIN_CALLBACKS(&rover);
