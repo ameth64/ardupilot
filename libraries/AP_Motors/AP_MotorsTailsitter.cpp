@@ -104,9 +104,9 @@ void AP_MotorsTailsitter::output_to_motors()
 // calculate outputs to the motors
 void AP_MotorsTailsitter::output_armed_stabilizing()
 {
-    _aileron = -_yaw_in;
+    _aileron = _roll_in;
     _elevator = _pitch_in;
-    _rudder = _roll_in;
+    _rudder = _yaw_in; // switch to _yaw_in
     _throttle = get_throttle();
 
     // sanity check throttle is above zero and below current limited throttle
