@@ -370,11 +370,11 @@ private:
 
     // Location & Navigation
     int32_t wp_bearing;
-    // The location of home in relation to the copter in centi-degrees
+    // The location of home in relation to the vehicle in centi-degrees
     int32_t home_bearing;
-    // distance between plane and home in cm
+    // distance between vehicle and home in cm
     int32_t home_distance;
-    // distance between plane and next waypoint in cm.
+    // distance between vehicle and next waypoint in cm.
     uint32_t wp_distance;
     LandStateType land_state = LandStateType_FlyToLocation; // records state of land (flying to location, descending)
 
@@ -416,8 +416,8 @@ private:
     bool circle_pilot_yaw_override; // true if pilot is overriding yaw
 
     // SIMPLE Mode
-    // Used to track the orientation of the copter for Simple mode. This value is reset at each arming
-    // or in SuperSimple mode when the copter leaves a 20m radius from home.
+    // Used to track the orientation of the vehicle for Simple mode. This value is reset at each arming
+    // or in SuperSimple mode when the vehicle leaves a 20m radius from home.
     float simple_cos_yaw;
     float simple_sin_yaw;
     int32_t super_simple_last_bearing;
@@ -440,7 +440,7 @@ private:
     uint32_t nav_delay_time_start;
 
     // Flip
-    Vector3f flip_orig_attitude;         // original copter attitude before flip
+    Vector3f flip_orig_attitude;         // original vehicle attitude before flip
 
     // throw mode state
     struct {
@@ -480,7 +480,7 @@ private:
     AP::PerfInfo perf_info = AP::PerfInfo::create();
 
     // 3D Location vectors
-    // Current location of the copter (altitude is relative to home)
+    // Current location of the vehicle (altitude is relative to home)
     Location_Class current_loc;
 
     // Navigation Yaw control
@@ -606,7 +606,7 @@ private:
 
     AP_ADSB adsb = AP_ADSB::create(ahrs);
 
-    // avoidance of adsb enabled vehicles (normally manned vheicles)
+    // avoidance of adsb enabled vehicles (normally manned vehicles)
     AP_Avoidance_Copter avoidance_adsb = AP_Avoidance_Copter::create(ahrs, adsb);
 
     // use this to prevent recursion during sensor init
@@ -660,7 +660,6 @@ private:
 
     void compass_accumulate(void);
     void compass_cal_update(void);
-    void barometer_accumulate(void);
     void perf_update(void);
     void fast_loop();
     void rc_loop();
@@ -1022,7 +1021,7 @@ private:
     void update_notify();
     void motor_test_output();
     bool mavlink_motor_test_check(mavlink_channel_t chan, bool check_rc);
-    uint8_t mavlink_motor_test_start(mavlink_channel_t chan, uint8_t motor_seq, uint8_t throttle_type, uint16_t throttle_value, float timeout_sec);
+    MAV_RESULT mavlink_motor_test_start(mavlink_channel_t chan, uint8_t motor_seq, uint8_t throttle_type, uint16_t throttle_value, float timeout_sec, uint8_t motor_count);
     void motor_test_stop();
     void arm_motors_check();
     void auto_disarm_check();
@@ -1052,6 +1051,7 @@ private:
     void radio_passthrough_to_motors();
     void init_barometer(bool full_calibration);
     void read_barometer(void);
+    void barometer_accumulate(void);
     void init_rangefinder(void);
     void read_rangefinder(void);
     bool rangefinder_alt_ok();
