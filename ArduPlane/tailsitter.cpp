@@ -94,6 +94,7 @@ void QuadPlane::tailsitter_output(void)
     if (tailsitter.vectored_hover_gain > 0) {
         // thrust vectoring VTOL modes
         float aileron = SRV_Channels::get_output_scaled(SRV_Channel::k_aileron);
+        float rudder = SRV_Channels::get_output_scaled(SRV_Channel::k_rudder);
         float elevator = SRV_Channels::get_output_scaled(SRV_Channel::k_elevator);
         /*
           apply extra elevator when at high pitch errors, using a
@@ -104,8 +105,8 @@ void QuadPlane::tailsitter_output(void)
         float extra_pitch = constrain_float(pitch_error_cd, -4500, 4500) / 4500.0;
         float extra_sign = extra_pitch > 0?1:-1;
         float extra_elevator = extra_sign * powf(fabsf(extra_pitch), tailsitter.vectored_hover_power) * 4500;
-        float tilt_left  = extra_elevator + (elevator + aileron) * tailsitter.vectored_hover_gain;
-        float tilt_right = extra_elevator + (elevator - aileron) * tailsitter.vectored_hover_gain;
+        float tilt_left  = extra_elevator + (elevator + rudder) * tailsitter.vectored_hover_gain;
+        float tilt_right = extra_elevator + (elevator - rudder) * tailsitter.vectored_hover_gain;
         if (fabsf(tilt_left) >= 4500 || fabsf(tilt_right) >= 4500) {
             // prevent integrator windup
             motors->limit.roll_pitch = 1;
